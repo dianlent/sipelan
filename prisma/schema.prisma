@@ -6,7 +6,8 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza19RM3lsXzZQV3NQNTYxS0RlZUVSekMiLCJhcGlfa2V5IjoiMDFLOFBTQVo0UUNOOVg3NjVYOTlYUjhSUFYiLCJ0ZW5hbnRfaWQiOiI2YTJjODIzNmYxMGUwZDZlOWY0NTRkMmY1ZTJlZDhmMWQ3NjA5ZTQxYTdlZDNiZTVhYWE3NjJlYjM0ZDVhZjc2IiwiaW50ZXJuYWxfc2VjcmV0IjoiYjg2M2NiMGItNjdkOC00MDQ5LTg5M2EtODM1MGNhNjc2OGIyIn0.QvbDU7oqQ8MSUUQ1pFwYZZOGfWgPVVtewT0BHymanPA")
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // User Model (Masyarakat, Pegawai, Administrator)
