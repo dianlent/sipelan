@@ -1,0 +1,78 @@
+# Vercel Ignore File
+# Files and directories to ignore during deployment
+
+# Development
+node_modules
+.next
+.cache
+
+# Environment
+.env
+.env.local
+.env.development
+.env.production
+.env.vercel
+
+# Testing
+coverage
+.nyc_output
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__
+__mocks__
+
+# Documentation (optional - remove if you want docs deployed)
+*.md
+!README.md
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+tmp
+temp
+*.tmp
+
+# Scripts (if not needed)
+scripts/deploy.sh
+scripts/backup.sh
+
+# PM2
+ecosystem.config.js
+
+# Nginx
+nginx.conf
+
+# Prisma (keep schema, ignore migrations if already deployed)
+# prisma/migrations
+
+# Backups
+backups
+*.sql
+*.sql.gz
+
+# Uploads (use external storage on Vercel)
+public/uploads

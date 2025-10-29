@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SIPELAN - Sistem Pengaduan Layanan Disnaker Kabupaten Pati",
-  description: "SIPELAN (Sistem Pengaduan Layanan) - Platform pengaduan online Dinas Tenaga Kerja Kabupaten Pati untuk menampung aspirasi dan keluhan masyarakat terkait ketenagakerjaan",
+  title: "SIPELAN - Sistem Pengaduan Layanan Naker Kabupaten Pati",
+  description: "SIPELAN (Sistem Pengaduan Layanan Naker) - Platform Pengaduan Online Dinas Tenaga Kerja Kabupaten Pati untuk menampung aspirasi dan keluhan masyarakat terkait ketenagakerjaan",
 };
 
 export default function RootLayout({

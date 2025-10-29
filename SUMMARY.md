@@ -1,4 +1,4 @@
-# Ringkasan Proyek - SIPELAN (Sistem Pengaduan Layanan)
+# Ringkasan Proyek - SIPELAN (Sistem Pengaduan Layanan Naker)
 
 ## ✅ Status: BAGIAN A - FITUR PUBLIK (FRONTEND) - SELESAI
 

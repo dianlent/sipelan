@@ -11,7 +11,7 @@
 - ❌ sipelan (kecuali dalam kode/URL)
 
 ### Nama Lengkap
-**SIPELAN - Sistem Pengaduan Layanan Dinas Tenaga Kerja Kabupaten Pati**
+**SIPELAN - Sistem Pengaduan Layanan Naker **
 
 ## Tagline
 
@@ -251,20 +251,20 @@ Mudah, cepat, dan terpercaya!
 
 ### Official
 ```
-Website: [URL akan ditentukan]
+Website: disnaker.patikab.go.id
 Email: disnaker@patikab.go.id
 Telepon: (0295) 123456
-Alamat: [Alamat lengkap Disnaker Pati]
+Alamat: Jl Panglima Sudirman No 70, Pati, Kabupaten Pati, Jawa Tengah
 ```
 
 ### Support Hours
 ```
-Senin - Jumat: 08:00 - 16:00 WIB
+Senin - Jumat: 08:00 - 15:00 WIB
 Sabtu - Minggu: Libur
 ```
 
 ---
 
 **Version**: 1.0  
-**Last Updated**: 27 Oktober 2024  
+**Last Updated**: 27 Oktober 2025  
 **Maintained by**: Tim IT Disnaker Kabupaten Pati

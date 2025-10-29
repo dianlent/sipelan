@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   BarChart,
@@ -32,10 +33,18 @@ import {
   Filter,
   Calendar,
   BarChart3,
+  Menu,
+  X,
+  LogOut,
+  Settings,
+  Bell,
+  Search,
+  Home,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 // Mock data untuk dashboard
 const statsData = {
@@ -122,6 +131,15 @@ const recentComplaints = [
 
 export default function AdminDashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState("30");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const menuItems = [
+    { name: "Dashboard", icon: LayoutDashboard, href: "/admin/dashboard", active: true },
+    { name: "Pengaduan", icon: FileText, href: "/admin/pengaduan", active: false },
+    { name: "User Management", icon: Users, href: "/admin/users", active: false },
+    { name: "Laporan", icon: BarChart3, href: "/admin/laporan", active: false },
+    { name: "Pengaturan", icon: Settings, href: "/admin/settings", active: false },
+  ];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -138,34 +156,134 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                <LayoutDashboard className="mr-3 h-8 w-8 text-blue-600" />
-                Dashboard Admin SIPELAN
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Monitoring dan analisis pengaduan ketenagakerjaan
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline">
-                <Filter className="mr-2 h-4 w-4" />
-                Filter
-              </Button>
-              <Button>
-                <Download className="mr-2 h-4 w-4" />
-                Export Data
-              </Button>
+      {/* Top Header */}
+      <header className="sticky top-0 z-50 bg-white border-b shadow-sm">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="lg:hidden"
+            >
+              {isSidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+            
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                  PP
+                </div>
+              </div>
+              <div className="hidden md:block">
+                <h1 className="text-lg font-bold text-gray-900">SIPELAN Admin</h1>
+                <p className="text-xs text-gray-500">Sistem Pengaduan Layanan</p>
+              </div>
             </div>
           </div>
+
+          {/* Search Bar */}
+          <div className="hidden md:flex flex-1 max-w-md mx-4">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="search"
+                placeholder="Cari pengaduan..."
+                className="pl-10 w-full"
+              />
+            </div>
+          </div>
+
+          {/* Right Actions */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full"></span>
+            </Button>
+            <div className="hidden md:flex items-center gap-3 ml-3 pl-3 border-l">
+              <div className="text-right">
+                <p className="text-sm font-semibold text-gray-900">Administrator</p>
+                <p className="text-xs text-gray-500">admin@sipelan.patikab.go.id</p>
+              </div>
+              <div className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                A
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
-      </div>
+      </header>
+
+      <div className="flex">
+        {/* Sidebar */}
+        <aside
+          className={`${
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } fixed lg:sticky lg:translate-x-0 top-[57px] left-0 z-40 h-[calc(100vh-57px)] w-64 bg-white border-r transition-transform duration-300 ease-in-out overflow-y-auto`}
+        >
+          <nav className="p-4 space-y-2">
+            {menuItems.map((item) => (
+              <Link key={item.name} href={item.href}>
+                <motion.div
+                  whileHover={{ x: 4 }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    item.active
+                      ? "bg-blue-50 text-blue-600 font-semibold"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.name}</span>
+                </motion.div>
+              </Link>
+            ))}
+          </nav>
+
+          {/* Sidebar Footer */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t bg-gray-50">
+            <div className="text-xs text-gray-500 text-center">
+              <p className="font-semibold">SIPELAN v1.0.0</p>
+              <p>© 2024 Disnaker Pati</p>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 p-4 lg:p-6 overflow-x-hidden">
+          {/* Page Header */}
+          <div className="mb-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                  <LayoutDashboard className="h-6 w-6 text-blue-600" />
+                  Dashboard Overview
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  Monitoring dan analisis pengaduan ketenagakerjaan
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm">
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filter
+                </Button>
+                <Button size="sm">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+              </div>
+            </div>
+          </div>
 
       <div className="container mx-auto px-4 py-8">
         {/* Stats Cards */}
@@ -490,6 +608,8 @@ export default function AdminDashboard() {
             </Card>
           </motion.div>
         </div>
+      </div>
+        </main>
       </div>
     </div>
   );

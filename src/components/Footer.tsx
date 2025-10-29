@@ -8,27 +8,27 @@ export default function Footer() {
           {/* About Section */}
           <div>
             <h3 className="text-white font-semibold text-lg mb-4">
-              SIPELAN - Sistem Pengaduan Layanan
+              SIPELAN - Sistem Pengaduan Layanan Naker
             </h3>
             <p className="text-sm text-gray-400 leading-relaxed">
-              Platform pengaduan online Dinas Tenaga Kerja Kabupaten Pati untuk menampung 
+              Platform Sistem Pengaduan Layanan Naker Dinas Tenaga Kerja Kabupaten Pati untuk menampung 
               aspirasi dan keluhan masyarakat terkait permasalahan ketenagakerjaan.
             </p>
           </div>
 
           {/* Contact Section */}
           <div>
-            <h3 className="text-white font-semibold text-lg mb-4">Kontak</h3>
+            <h3 className="text-white font-semibold text-lg mb-4">Kontak Kami</h3>
             <div className="space-y-3">
               <div className="flex items-start space-x-3">
                 <MapPin className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
                 <span className="text-sm">
-                  Jl. Contoh Alamat No. 123, Pati, Jawa Tengah
+                  Jl. Panglima Sudirman No 70 Pati, Jawa Tengah
                 </span>
               </div>
               <div className="flex items-center space-x-3">
                 <Phone className="h-5 w-5 text-blue-400 flex-shrink-0" />
-                <span className="text-sm">(0295) 123456</span>
+                <span className="text-sm">(0295) 381471</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Mail className="h-5 w-5 text-blue-400 flex-shrink-0" />
@@ -78,7 +78,7 @@ export default function Footer() {
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
           <p>
-            &copy; {new Date().getFullYear()} Dinas Tenaga Kerja Kabupaten Pati.
+            &copy; {new Date().getFullYear()} TIM IT @Dinas Tenaga Kerja Kabupaten Pati.
             Hak Cipta Dilindungi.
           </p>
         </div>

@@ -7,7 +7,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "prisma generate",
+    "prod:build": "NODE_ENV=production next build",
+    "prod:start": "NODE_ENV=production next start",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate deploy",
+    "prisma:studio": "prisma studio",
+    "logs": "pm2 logs sipelan",
+    "restart": "pm2 restart sipelan",
+    "reload": "pm2 reload sipelan",
+    "stop": "pm2 stop sipelan",
+    "vercel-build": "prisma generate && next build"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.0",

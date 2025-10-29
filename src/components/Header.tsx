@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, X, LogIn, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -27,10 +27,6 @@ export default function Header() {
               <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
                 PP
               </div>
-              {/* Placeholder for Disnaker Logo */}
-              <div className="h-10 w-10 rounded-full bg-green-600 flex items-center justify-center text-white font-bold">
-                DN
-              </div>
             </div>
             <div className="hidden md:block">
               <div className="text-sm font-semibold text-gray-900">
@@ -51,6 +47,22 @@ export default function Header() {
                 {item.name}
               </Link>
             ))}
+            
+            {/* Auth Buttons */}
+            <div className="flex items-center space-x-3 ml-4 pl-4 border-l">
+              <Link href="/register">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Registrasi
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button size="sm" className="gap-2">
+                  <LogIn className="h-4 w-4" />
+                  Login
+                </Button>
+              </Link>
+            </div>
           </nav>
 
           {/* Mobile Menu Button */}
@@ -81,6 +93,22 @@ export default function Header() {
                   {item.name}
                 </Link>
               ))}
+              
+              {/* Auth Buttons Mobile */}
+              <div className="pt-3 mt-3 border-t flex flex-col space-y-2">
+                <Link href="/register" onClick={() => setIsMenuOpen(false)}>
+                  <Button variant="outline" size="sm" className="w-full gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Registrasi
+                  </Button>
+                </Link>
+                <Link href="/login" onClick={() => setIsMenuOpen(false)}>
+                  <Button size="sm" className="w-full gap-2">
+                    <LogIn className="h-4 w-4" />
+                    Login
+                  </Button>
+                </Link>
+              </div>
             </div>
           </nav>
         )}

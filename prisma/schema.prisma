@@ -9,33 +9,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User Model (Admin, Petugas, Pimpinan)
+// User Model (Masyarakat, Pegawai, Administrator)
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
   password  String
   nama      String
-  role      Role     @default(PETUGAS)
+  nip       String?  @unique // Untuk Pegawai & Administrator
+  role      Role     @default(USER)
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
+  pengaduan        Pengaduan[]
   pengaduanHistory PengaduanHistory[]
   
   @@map("users")
 }
 
 enum Role {
-  SUPER_ADMIN
-  ADMIN
-  PETUGAS
-  PIMPINAN
+  USER          // Masyarakat umum
+  PEGAWAI       // Pegawai Disnaker
+  ADMINISTRATOR // Administrator sistem
 }
 
 // Pengaduan Model
 model Pengaduan {
   id             String   @id @default(cuid())
   ticketNumber   String   @unique
+  
+  // User ID (optional - untuk user yang login)
+  userId         String?
   
   // Data Pelapor
   nama           String
@@ -59,6 +64,7 @@ model Pengaduan {
   updatedAt      DateTime @updatedAt
   
   // Relations
+  user           User?    @relation(fields: [userId], references: [id])
   files          PengaduanFile[]
   history        PengaduanHistory[]
   
@@ -66,6 +72,7 @@ model Pengaduan {
   @@index([email])
   @@index([status])
   @@index([createdAt])
+  @@index([userId])
   @@map("pengaduan")
 }
 

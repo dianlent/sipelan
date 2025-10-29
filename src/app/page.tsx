@@ -33,7 +33,7 @@ export default function Home() {
               >
                 SIPELAN
                 <br />
-                <span className="text-blue-200">Sistem Pengaduan Layanan Disnaker Pati</span>
+                <span className="text-blue-200">Sistem Pengaduan Layanan Naker </span>
               </motion.h1>
               <motion.p 
                 className="text-lg md:text-xl text-blue-100 mb-8 leading-relaxed"
