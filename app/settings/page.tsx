@@ -15,7 +15,14 @@ import {
   Eye,
   EyeOff,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  ClipboardCheck,
+  Phone,
+  MapPin,
+  Facebook,
+  Twitter,
+  Instagram,
+  Youtube
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -150,44 +157,80 @@ export default function SettingsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Navbar */}
-      <nav className="bg-white shadow-md sticky top-0 z-50">
+    <div className="min-h-screen bg-gray-50">
+      {/* Professional Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
+            {/* Back Button */}
             <Link 
               href={user.role === 'admin' ? '/admin' : user.role === 'bidang' ? '/bidang' : '/dashboard'} 
-              className="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 rounded-xl hover:bg-gray-100 transition-all group"
             >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium">Kembali</span>
+              <ArrowLeft className="w-5 h-5 text-gray-600 group-hover:text-purple-600 transition-colors" />
+              <span className="font-semibold text-gray-700 group-hover:text-purple-600 transition-colors">Kembali</span>
             </Link>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-gray-900">{user.nama_lengkap}</p>
-              <p className="text-xs text-gray-500 capitalize">{user.role}</p>
+
+            {/* User Info */}
+            <div className="flex items-center space-x-3">
+              <div className="text-right">
+                <p className="text-sm font-bold text-gray-900">{user.nama_lengkap}</p>
+                <p className="text-xs text-purple-600 font-semibold capitalize flex items-center justify-end gap-1">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  {user.role}
+                </p>
+              </div>
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md">
+                {user.nama_lengkap.charAt(0)}
+              </div>
             </div>
           </div>
         </div>
-      </nav>
+      </header>
+
+      {/* Hero Section */}
+      <div className="bg-gradient-to-br from-purple-600 via-purple-500 to-pink-600 text-white relative overflow-hidden">
+        {/* Decorative Elements */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full -mr-48 -mt-48"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full -ml-32 -mb-32"></div>
+        
+        <div className="container mx-auto px-4 py-12 relative">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-4xl"
+          >
+            <div className="flex items-start space-x-6">
+              <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-2xl border-2 border-white/30">
+                <Shield className="w-10 h-10 text-white" />
+              </div>
+              <div className="flex-1">
+                <h1 className="text-4xl font-bold mb-3">Pengaturan Akun</h1>
+                <p className="text-white/90 text-lg mb-4">
+                  Kelola informasi pribadi, keamanan, dan preferensi akun Anda
+                </p>
+                <div className="flex items-center space-x-4 text-sm">
+                  <div className="flex items-center space-x-2 bg-white/20 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                    <User className="w-4 h-4" />
+                    <span>{user.nama_lengkap}</span>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-white/20 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                    <Mail className="w-4 h-4" />
+                    <span>{user.email || 'user@example.com'}</span>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-white/20 px-3 py-1.5 rounded-lg backdrop-blur-sm capitalize">
+                    <Shield className="w-4 h-4" />
+                    <span>{user.role}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex items-center space-x-4 mb-2">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
-              <Shield className="w-8 h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Pengaturan Akun</h1>
-              <p className="text-gray-600">Kelola informasi dan preferensi akun Anda</p>
-            </div>
-          </div>
-        </motion.div>
+      <div className="container mx-auto px-4 py-8 max-w-5xl -mt-8 relative z-10">
 
         <div className="grid lg:grid-cols-4 gap-6">
           {/* Sidebar Tabs */}
@@ -517,6 +560,143 @@ export default function SettingsPage() {
           </motion.div>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white mt-20">
+        {/* Main Footer */}
+        <div className="container mx-auto px-4 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+            {/* Brand Section */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center">
+                  <ClipboardCheck className="w-7 h-7 text-white" />
+                </div>
+                <span className="text-2xl font-bold">SIPelan</span>
+              </div>
+              <p className="text-gray-400 leading-relaxed">
+                Sistem Pengaduan Layanan Online Naker - Melayani pengaduan masyarakat terkait ketenagakerjaan dengan cepat dan transparan.
+              </p>
+              <div className="flex space-x-3">
+                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
+                  <Facebook className="w-5 h-5" />
+                </a>
+                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
+                  <Twitter className="w-5 h-5" />
+                </a>
+                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
+                  <Instagram className="w-5 h-5" />
+                </a>
+                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
+                  <Youtube className="w-5 h-5" />
+                </a>
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h3 className="text-lg font-bold mb-6 text-white">Menu Cepat</h3>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
+                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
+                    <span>Dashboard</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/pengaduan" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
+                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
+                    <span>Buat Pengaduan</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/tracking" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
+                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
+                    <span>Tracking</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/riwayat" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
+                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
+                    <span>Riwayat</span>
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Layanan */}
+            <div>
+              <h3 className="text-lg font-bold mb-6 text-white">Layanan Kami</h3>
+              <ul className="space-y-3">
+                <li className="text-gray-400 flex items-start space-x-2">
+                  <CheckCircle className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
+                  <span>Pengaduan Online</span>
+                </li>
+                <li className="text-gray-400 flex items-start space-x-2">
+                  <CheckCircle className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
+                  <span>Tracking Real-time</span>
+                </li>
+                <li className="text-gray-400 flex items-start space-x-2">
+                  <CheckCircle className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
+                  <span>Notifikasi Email</span>
+                </li>
+                <li className="text-gray-400 flex items-start space-x-2">
+                  <CheckCircle className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
+                  <span>Layanan 24/7</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Contact Info */}
+            <div>
+              <h3 className="text-lg font-bold mb-6 text-white">Hubungi Kami</h3>
+              <ul className="space-y-4">
+                <li className="flex items-start space-x-3 text-gray-400">
+                  <MapPin className="w-5 h-5 text-purple-500 flex-shrink-0 mt-1" />
+                  <span>Jl. Disnaker No. 123<br />Jakarta Pusat, DKI Jakarta<br />10110</span>
+                </li>
+                <li className="flex items-center space-x-3 text-gray-400">
+                  <Phone className="w-5 h-5 text-purple-500 flex-shrink-0" />
+                  <span>(021) 1234-5678</span>
+                </li>
+                <li className="flex items-center space-x-3 text-gray-400">
+                  <Mail className="w-5 h-5 text-purple-500 flex-shrink-0" />
+                  <span>info@disnaker.go.id</span>
+                </li>
+              </ul>
+              <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10">
+                <p className="text-sm text-gray-400 mb-2">Jam Layanan:</p>
+                <p className="text-white font-semibold">Senin - Jumat</p>
+                <p className="text-gray-400 text-sm">08:00 - 16:00 WIB</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Footer */}
+        <div className="border-t border-white/10">
+          <div className="container mx-auto px-4 py-6">
+            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+              <p className="text-gray-400 text-sm text-center md:text-left">
+                &copy; {new Date().getFullYear()} Dinas Ketenagakerjaan. All rights reserved.
+              </p>
+              <div className="flex items-center space-x-6 text-sm">
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  Kebijakan Privasi
+                </a>
+                <span className="text-gray-600">|</span>
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  Syarat & Ketentuan
+                </a>
+                <span className="text-gray-600">|</span>
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  FAQ
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

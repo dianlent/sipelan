@@ -71,37 +71,34 @@ export default function BidangPage() {
 
   const loadPengaduan = async (kodeBidang: string) => {
     try {
-      // TODO: Fetch from API based on kode_bidang
-      // Mock data - pengaduan yang didisposisi ke bidang ini
-      const mockData: Pengaduan[] = [
-        {
-          id: '1',
-          kode_pengaduan: 'ADU-2024-0001',
-          judul_pengaduan: 'Upah tidak dibayar sesuai UMR',
-          isi_pengaduan: 'Perusahaan tempat saya bekerja membayar upah di bawah UMR yang ditetapkan pemerintah.',
-          kategori: 'Pengupahan',
-          status: 'di proses',
-          nama_pelapor: 'John Doe',
-          email_pelapor: 'john@example.com',
-          lokasi_kejadian: 'PT ABC Indonesia, Jakarta Selatan',
-          tanggal_kejadian: '2024-01-15',
-          created_at: '2024-01-16T10:00:00Z',
-          disposisi_keterangan: 'Mohon segera ditindaklanjuti'
-        },
-        {
-          id: '2',
-          kode_pengaduan: 'ADU-2024-0005',
-          judul_pengaduan: 'Tidak ada jaminan kesehatan',
-          isi_pengaduan: 'Perusahaan tidak mendaftarkan karyawan ke BPJS Kesehatan.',
-          kategori: 'Ketenagakerjaan',
-          status: 'di proses',
-          nama_pelapor: 'Jane Smith',
-          email_pelapor: 'jane@example.com',
-          created_at: '2024-01-18T14:30:00Z',
-          disposisi_keterangan: 'Prioritas tinggi'
-        }
-      ]
-      setPengaduanList(mockData)
+      // Load pengaduan from localStorage that are dispositioned to this bidang
+      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+      
+      // Filter only pengaduan that are dispositioned to this bidang
+      const bidangPengaduan: Pengaduan[] = Object.values(allPengaduan)
+        .filter((p: any) => {
+          // Check if pengaduan has been dispositioned to this bidang
+          return p.bidang && p.bidang.kode_bidang === kodeBidang
+        })
+        .map((p: any) => ({
+          id: p.id,
+          kode_pengaduan: p.kode_pengaduan,
+          judul_pengaduan: p.judul_pengaduan,
+          isi_pengaduan: p.isi_pengaduan,
+          kategori: p.kategori,
+          status: p.status,
+          nama_pelapor: p.user?.nama_lengkap || 'Anonim',
+          email_pelapor: p.user?.email || '',
+          lokasi_kejadian: p.lokasi_kejadian || '',
+          tanggal_kejadian: p.tanggal_kejadian || '',
+          created_at: p.created_at,
+          disposisi_keterangan: p.disposisi_keterangan || ''
+        }))
+      
+      // Sort by date (newest first)
+      bidangPengaduan.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      
+      setPengaduanList(bidangPengaduan)
     } catch (error) {
       toast.error('Gagal memuat data pengaduan')
       console.error('Load error:', error)
@@ -163,14 +160,80 @@ export default function BidangPage() {
       return
     }
 
+    if (!selectedPengaduan) {
+      toast.error('Pengaduan tidak ditemukan')
+      return
+    }
+
     setIsLoading(true)
     try {
-      // TODO: Send to API
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Update pengaduan in localStorage
+      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+      const pengaduanData = allPengaduan[selectedPengaduan.kode_pengaduan]
+      
+      if (pengaduanData) {
+        // Add tanggapan to timeline
+        if (!pengaduanData.timeline) {
+          pengaduanData.timeline = []
+        }
+        
+        pengaduanData.timeline.push({
+          status: 'tindak_lanjut',
+          keterangan: `Tanggapan dari ${user?.nama_lengkap || 'Bidang'}: ${tanggapan}`,
+          created_at: new Date().toISOString(),
+          tanggapan: tanggapan,
+          petugas: user?.nama_lengkap || 'Bidang'
+        })
+        
+        // Update status to tindak_lanjut
+        pengaduanData.status = 'tindak_lanjut'
+        
+        // Save back to localStorage
+        allPengaduan[selectedPengaduan.kode_pengaduan] = pengaduanData
+        localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
+        
+        // Simulate sending email notification
+        const emailData = {
+          to: pengaduanData.user?.email || selectedPengaduan.email_pelapor,
+          subject: `Tanggapan Pengaduan ${selectedPengaduan.kode_pengaduan}`,
+          body: `
+            <h2>Tanggapan Pengaduan</h2>
+            <p>Pengaduan Anda dengan kode <strong>${selectedPengaduan.kode_pengaduan}</strong> telah mendapat tanggapan:</p>
+            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
+              <p><strong>Judul:</strong> ${selectedPengaduan.judul_pengaduan}</p>
+              <p><strong>Tanggapan:</strong> ${tanggapan}</p>
+              <p><strong>Petugas:</strong> ${user?.nama_lengkap || 'Bidang'}</p>
+              <p><strong>Tanggal:</strong> ${new Date().toLocaleString('id-ID')}</p>
+            </div>
+            <p>Anda dapat melacak status pengaduan Anda di: <a href="${window.location.origin}/tracking?kode=${selectedPengaduan.kode_pengaduan}">Tracking Pengaduan</a></p>
+          `
+        }
+        
+        console.log('📧 Email notification would be sent:', emailData)
+        
+        // Update local state
+        setPengaduanList(prev => 
+          prev.map(p => 
+            p.id === selectedPengaduan.id 
+              ? { ...p, status: 'tindak_lanjut' } 
+              : p
+          )
+        )
+        
+        // Reload data
+        if (user?.kode_bidang) {
+          loadPengaduan(user.kode_bidang)
+        }
+      }
 
-      toast.success('Tanggapan berhasil dikirim')
+      toast.success('Tanggapan berhasil dikirim! Email notifikasi telah dikirim ke pelapor', {
+        duration: 5000,
+        icon: '📧'
+      })
+      
       setShowTanggapanModal(false)
       setTanggapan('')
+      setSelectedPengaduan(null)
     } catch (error) {
       toast.error('Gagal mengirim tanggapan')
       console.error('Submit error:', error)

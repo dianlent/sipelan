@@ -18,6 +18,8 @@ interface TimelineStep {
   date?: string
   icon: React.ReactNode
   color: string
+  tanggapan?: string
+  petugas?: string
 }
 
 interface PengaduanTimelineProps {
@@ -26,6 +28,8 @@ interface PengaduanTimelineProps {
     status: string
     keterangan: string
     created_at: string
+    tanggapan?: string
+    petugas?: string
   }>
 }
 
@@ -77,7 +81,9 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
       status: index === timeline.length - 1 ? 'current' : 'completed',
       icon: <CheckCircle className="w-6 h-6" />,
       color: info.color,
-      date: item.created_at
+      date: item.created_at,
+      tanggapan: item.tanggapan,
+      petugas: item.petugas
     }
   })
 
@@ -205,6 +211,29 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
                   {step.description}
                 </p>
                 
+                {/* Show tanggapan if available */}
+                {step.tanggapan && (
+                  <div className="mt-3 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                    <div className="flex items-start gap-2">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">💬</span>
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-semibold text-blue-700">Tanggapan Bidang</span>
+                          {step.petugas && (
+                            <span className="text-xs text-blue-600">• {step.petugas}</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          {step.tanggapan}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )

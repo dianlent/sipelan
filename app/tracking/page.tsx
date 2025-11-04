@@ -82,11 +82,59 @@ export default function TrackingPage() {
     setHasSearched(true)
 
     try {
-      // TODO: Fetch from API
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      // Mock data dengan status timeline
+      // Try to fetch from API
+      try {
+        const response = await fetch(`http://localhost:3001/api/pengaduan/tracking/${kodeTracking.toUpperCase()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          
+          if (data.success && data.data) {
+            setPengaduan(data.data)
+            toast.success('Pengaduan ditemukan!')
+            return
+          }
+        }
+        
+        if (response.status === 404) {
+          // Check localStorage before showing error
+          const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+          const localData = allPengaduan[kodeTracking.toUpperCase()]
+          
+          if (localData) {
+            setPengaduan(localData)
+            toast.success('Pengaduan ditemukan!')
+            return
+          }
+          
+          toast.error('Pengaduan tidak ditemukan')
+          setPengaduan(null)
+          return
+        }
+      } catch (apiError) {
+        // API not available, silently fall through to localStorage
+      }
+      
+      // Check localStorage first
+      try {
+        const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+        const localData = allPengaduan[kodeTracking.toUpperCase()]
+        
+        if (localData) {
+          setPengaduan(localData)
+          toast.success('Pengaduan ditemukan!')
+          return
+        }
+      } catch (localError) {
+        console.error('localStorage error:', localError)
+      }
+      
+      // If not found in localStorage, use default mock data
       const mockData: PengaduanDetail = {
         id: '1',
         kode_pengaduan: kodeTracking.toUpperCase(),
@@ -123,18 +171,14 @@ export default function TrackingPage() {
           },
           {
             status: 'tindak_lanjut',
-            keterangan: 'Pengaduan sedang ditindaklanjuti oleh Bidang Hubungan Industrial',
-            created_at: '2024-01-17T14:30:00Z'
+            keterangan: 'Bidang sedang menindaklanjuti pengaduan Anda',
+            created_at: '2024-01-18T11:00:00Z'
           }
         ]
       }
 
       setPengaduan(mockData)
-      toast.success('Data pengaduan ditemukan')
-    } catch (error) {
-      toast.error('Pengaduan tidak ditemukan')
-      setPengaduan(null)
-      console.error('Search error:', error)
+      toast.success('Pengaduan ditemukan! (Demo Data)')
     } finally {
       setIsLoading(false)
     }

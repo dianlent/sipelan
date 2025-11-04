@@ -102,59 +102,25 @@ export default function AdminPage() {
 
   const loadPengaduan = async () => {
     try {
-      // TODO: Fetch from API
-      // Mock data dengan status timeline
-      const mockData: Pengaduan[] = [
-        {
-          id: '1',
-          kode_pengaduan: 'ADU-2024-0001',
-          judul_pengaduan: 'Upah tidak dibayar sesuai UMR',
-          kategori: 'Pengupahan',
-          status: 'masuk',
-          nama_pelapor: 'John Doe',
-          created_at: '2024-01-16T10:00:00Z'
-        },
-        {
-          id: '2',
-          kode_pengaduan: 'ADU-2024-0002',
-          judul_pengaduan: 'PHK tanpa pesangon',
-          kategori: 'Ketenagakerjaan',
-          status: 'tindak_lanjut',
-          nama_pelapor: 'Jane Smith',
-          created_at: '2024-01-15T14:30:00Z',
-          bidang: 'Bidang Hubungan Industrial'
-        },
-        {
-          id: '3',
-          kode_pengaduan: 'ADU-2024-0003',
-          judul_pengaduan: 'Tidak ada APD di tempat kerja',
-          kategori: 'K3',
-          status: 'terverifikasi',
-          nama_pelapor: 'Bob Johnson',
-          created_at: '2024-01-14T09:15:00Z'
-        },
-        {
-          id: '4',
-          kode_pengaduan: 'ADU-2024-0004',
-          judul_pengaduan: 'Jam kerja melebihi batas normal',
-          kategori: 'Ketenagakerjaan',
-          status: 'terdisposisi',
-          nama_pelapor: 'Alice Brown',
-          created_at: '2024-01-13T11:20:00Z',
-          bidang: 'Bidang PTPK'
-        },
-        {
-          id: '5',
-          kode_pengaduan: 'ADU-2024-0005',
-          judul_pengaduan: 'Diskriminasi gender di tempat kerja',
-          kategori: 'Ketenagakerjaan',
-          status: 'selesai',
-          nama_pelapor: 'Charlie Davis',
-          created_at: '2024-01-10T08:45:00Z',
-          bidang: 'Bidang Hubungan Industrial'
-        }
-      ]
-      setPengaduanList(mockData)
+      // Load all pengaduan from localStorage (Admin sees ALL)
+      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+      
+      // Convert object to array
+      const pengaduanArray: Pengaduan[] = Object.values(allPengaduan).map((p: any) => ({
+        id: p.id,
+        kode_pengaduan: p.kode_pengaduan,
+        judul_pengaduan: p.judul_pengaduan,
+        kategori: p.kategori,
+        status: p.status,
+        nama_pelapor: p.user?.nama_lengkap || 'Anonim',
+        created_at: p.created_at,
+        bidang: p.bidang?.nama_bidang || null
+      }))
+      
+      // Sort by date (newest first)
+      pengaduanArray.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      
+      setPengaduanList(pengaduanArray)
     } catch (error) {
       toast.error('Gagal memuat data pengaduan')
       console.error('Load error:', error)

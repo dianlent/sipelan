@@ -129,10 +129,41 @@ export default function PengaduanPage() {
       const randomNum = Math.floor(Math.random() * 9999) + 1
       const generatedCode = `ADU-${year}-${String(randomNum).padStart(4, '0')}`
       
-      setKodeTracking(generatedCode)
-      setShowSuccessModal(true)
+      // Get category name
+      const selectedCategory = categories.find(cat => cat.id.toString() === formData.kategori_id)
       
-      // Save to localStorage for tracking
+      // Create complete pengaduan object
+      const pengaduanData = {
+        id: generatedCode,
+        kode_pengaduan: generatedCode,
+        judul_pengaduan: formData.judul_pengaduan,
+        isi_pengaduan: formData.isi_pengaduan,
+        kategori: selectedCategory?.nama_kategori || 'Umum',
+        status: 'masuk',
+        lokasi_kejadian: formData.lokasi_kejadian,
+        tanggal_kejadian: formData.tanggal_kejadian,
+        file_bukti: formData.file_bukti?.name || null,
+        created_at: new Date().toISOString(),
+        user: {
+          nama_lengkap: formData.nama_pelapor,
+          email: formData.email_pelapor
+        },
+        no_telepon: formData.no_telepon,
+        timeline: [
+          {
+            status: 'masuk',
+            keterangan: 'Pengaduan telah diterima sistem dan menunggu verifikasi',
+            created_at: new Date().toISOString()
+          }
+        ]
+      }
+      
+      // Save complete data to localStorage
+      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+      allPengaduan[generatedCode] = pengaduanData
+      localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
+      
+      // Also save to user's list
       const savedCodes = JSON.parse(localStorage.getItem('myPengaduan') || '[]')
       savedCodes.push({
         kode: generatedCode,
@@ -141,6 +172,8 @@ export default function PengaduanPage() {
       })
       localStorage.setItem('myPengaduan', JSON.stringify(savedCodes))
       
+      setKodeTracking(generatedCode)
+      setShowSuccessModal(true)
       toast.success('Pengaduan berhasil diajukan!')
     } catch (error) {
       toast.error('Gagal mengajukan pengaduan')
