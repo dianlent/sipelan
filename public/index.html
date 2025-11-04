@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIPelan - Sistem Pengaduan Layanan Online Naker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="./assets/css/style.css" rel="stylesheet">
+</head>
+<body class="modern-body">
+    <div id="app">
+        <!-- Modern Navbar with Gradient -->
+        <nav class="navbar navbar-expand-lg navbar-dark modern-navbar fixed-top">
+            <div class="container">
+                <a class="navbar-brand animate__animated animate__fadeInLeft" href="#dashboard">
+                    <div class="brand-logo">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <span class="brand-text">SIPelan</span>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav mx-auto">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#dashboard">
+                                <i class="fas fa-home me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item" id="menuPengaduan" style="display: none;">
+                            <a class="nav-link" href="#pengaduan">
+                                <i class="fas fa-plus-circle me-1"></i>Buat Pengaduan
+                            </a>
+                        </li>
+                        <li class="nav-item" id="menuTracking" style="display: none;">
+                            <a class="nav-link" href="#tracking">
+                                <i class="fas fa-search me-1"></i>Tracking
+                            </a>
+                        </li>
+                        <li class="nav-item" id="menuBidang" style="display: none;">
+                            <a class="nav-link" href="#bidang">
+                                <i class="fas fa-briefcase me-1"></i>Bidang
+                            </a>
+                        </li>
+                        <li class="nav-item" id="menuAdmin" style="display: none;">
+                            <a class="nav-link" href="#admin">
+                                <i class="fas fa-cog me-1"></i>Admin
+                            </a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav">
+                        <li class="nav-item dropdown" id="userMenu" style="display: none;">
+                            <a class="nav-link dropdown-toggle user-menu" href="#" role="button" data-bs-toggle="dropdown">
+                                <div class="user-avatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <span id="userName" class="ms-2">User</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end modern-dropdown">
+                                <li><a class="dropdown-item" href="#profile"><i class="fas fa-user-circle me-2"></i>Profile</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item" id="loginMenu">
+                            <a class="nav-link btn-login" href="#login">
+                                <i class="fas fa-sign-in-alt me-1"></i>Login
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div id="dashboard" class="page-content">
+                <!-- Hero Section with Gradient -->
+                <section class="hero-section animate__animated animate__fadeIn">
+                    <div class="container">
+                        <div class="row align-items-center">
+                            <div class="col-lg-6 mb-4 mb-lg-0">
+                                <div class="hero-content animate__animated animate__fadeInLeft">
+                                    <h1 class="hero-title">
+                                        <span class="gradient-text">SIPelan</span>
+                                    </h1>
+                                    <h2 class="hero-subtitle">Sistem Pengaduan Layanan Online</h2>
+                                    <p class="hero-description">
+                                        Laporkan keluhan dan pengaduan terkait layanan ketenagakerjaan secara online dengan mudah, cepat, dan transparan.
+                                    </p>
+                                    <div class="hero-buttons">
+                                        <a href="#pengaduan" class="btn btn-gradient btn-lg me-3">
+                                            <i class="fas fa-plus-circle me-2"></i>Buat Pengaduan
+                                        </a>
+                                        <a href="#tracking" class="btn btn-outline-light btn-lg">
+                                            <i class="fas fa-search me-2"></i>Tracking
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="hero-illustration animate__animated animate__fadeInRight">
+                                    <div class="floating-card">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hero-wave">
+                        <svg viewBox="0 0 1440 120" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M0,64L48,69.3C96,75,192,85,288,80C384,75,480,53,576,48C672,43,768,53,864,58.7C960,64,1056,64,1152,58.7C1248,53,1344,43,1392,37.3L1440,32L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z" fill="#ffffff"></path>
+                        </svg>
+                    </div>
+                </section>
+
+                <!-- Features Section -->
+                <section class="features-section py-5">
+                    <div class="container">
+                        <div class="text-center mb-5 animate__animated animate__fadeInUp">
+                            <h2 class="section-title">Fitur Unggulan</h2>
+                            <p class="section-subtitle">Kemudahan dalam setiap langkah pengaduan Anda</p>
+                        </div>
+                        <div class="row g-4">
+                            <div class="col-md-6 col-lg-3">
+                                <div class="feature-card animate__animated animate__fadeInUp" style="animation-delay: 0.1s">
+                                    <div class="feature-icon bg-gradient-primary">
+                                        <i class="fas fa-file-alt"></i>
+                                    </div>
+                                    <h5 class="feature-title">Buat Pengaduan</h5>
+                                    <p class="feature-description">Ajukan pengaduan Anda secara online dengan mudah dan cepat</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <div class="feature-card animate__animated animate__fadeInUp" style="animation-delay: 0.2s">
+                                    <div class="feature-icon bg-gradient-success">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                    <h5 class="feature-title">Tracking Status</h5>
+                                    <p class="feature-description">Monitor progress pengaduan Anda secara real-time</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <div class="feature-card animate__animated animate__fadeInUp" style="animation-delay: 0.3s">
+                                    <div class="feature-icon bg-gradient-warning">
+                                        <i class="fas fa-exchange-alt"></i>
+                                    </div>
+                                    <h5 class="feature-title">Disposisi Cepat</h5>
+                                    <p class="feature-description">Pengaduan langsung diteruskan ke bidang terkait</p>
+                                </div>
+                            </div>
+                            <div class="col-md-6 col-lg-3">
+                                <div class="feature-card animate__animated animate__fadeInUp" style="animation-delay: 0.4s">
+                                    <div class="feature-icon bg-gradient-info">
+                                        <i class="fas fa-envelope"></i>
+                                    </div>
+                                    <h5 class="feature-title">Notifikasi Email</h5>
+                                    <p class="feature-description">Dapatkan update status melalui email Anda</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Stats Section -->
+                <section class="stats-section py-5 bg-light">
+                    <div class="container">
+                        <div class="row text-center g-4">
+                            <div class="col-md-3">
+                                <div class="stat-item animate__animated animate__fadeInUp">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-users"></i>
+                                    </div>
+                                    <h3 class="stat-number" data-target="1000">0</h3>
+                                    <p class="stat-label">Pengguna Aktif</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-item animate__animated animate__fadeInUp" style="animation-delay: 0.1s">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-clipboard-list"></i>
+                                    </div>
+                                    <h3 class="stat-number" data-target="500">0</h3>
+                                    <p class="stat-label">Pengaduan Selesai</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-item animate__animated animate__fadeInUp" style="animation-delay: 0.2s">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                    <h3 class="stat-number" data-target="24">0</h3>
+                                    <p class="stat-label">Jam Response</p>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="stat-item animate__animated animate__fadeInUp" style="animation-delay: 0.3s">
+                                    <div class="stat-icon">
+                                        <i class="fas fa-star"></i>
+                                    </div>
+                                    <h3 class="stat-number" data-target="95">0</h3>
+                                    <p class="stat-label">% Kepuasan</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div id="login" class="page-content" style="display: none;">
+                <div class="row justify-content-center">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="mb-0">Login SIPelan</h4>
+                            </div>
+                            <div class="card-body">
+                                <form id="loginForm">
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="email" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="password" class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="password" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                                </form>
+                                <div class="text-center mt-3">
+                                    <p>Belum punya akun? <a href="#register">Daftar di sini</a></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="register" class="page-content" style="display: none;">
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="mb-0">Register SIPelan</h4>
+                            </div>
+                            <div class="card-body">
+                                <form id="registerForm">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="username" class="form-label">Username</label>
+                                                <input type="text" class="form-control" id="username" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="nama_lengkap" class="form-label">Nama Lengkap</label>
+                                                <input type="text" class="form-control" id="nama_lengkap" required>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="email" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="password" class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="password" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="confirmPassword" class="form-label">Konfirmasi Password</label>
+                                        <input type="password" class="form-control" id="confirmPassword" required>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">Register</button>
+                                </form>
+                                <div class="text-center mt-3">
+                                    <p>Sudah punya akun? <a href="#login">Login di sini</a></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="pengaduan" class="page-content" style="display: none;">
+                <div class="row">
+                    <div class="col-12">
+                        <h2>Buat Pengaduan Baru</h2>
+                        <div class="card">
+                            <div class="card-body">
+                                <form id="pengaduanForm">
+                                    <div class="mb-3">
+                                        <label for="kategori" class="form-label">Kategori Pengaduan</label>
+                                        <select class="form-select" id="kategori" required>
+                                            <option value="">Pilih Kategori</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="judul" class="form-label">Judul Pengaduan</label>
+                                        <input type="text" class="form-control" id="judul" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="isi" class="form-label">Isi Pengaduan</label>
+                                        <textarea class="form-control" id="isi" rows="5" required></textarea>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="lokasi" class="form-label">Lokasi Kejadian</label>
+                                        <input type="text" class="form-control" id="lokasi">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="tanggal" class="form-label">Tanggal Kejadian</label>
+                                        <input type="date" class="form-control" id="tanggal">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="file_bukti" class="form-label">Upload Bukti (Optional)</label>
+                                        <input type="file" class="form-control" id="file_bukti" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+                                        <div class="form-text">Format: JPG, PNG, PDF, DOC, DOCX (Max: 10MB)</div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Kirim Pengaduan</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tracking" class="page-content" style="display: none;">
+                <div class="row">
+                    <div class="col-12">
+                        <h2>Tracking Pengaduan</h2>
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="trackingKode" placeholder="Masukkan kode pengaduan (contoh: ADU-2024-0001)">
+                                    <button class="btn btn-primary" onclick="trackPengaduan()">Track</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="trackingResult"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div class="modal fade" id="alertModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="alertModalTitle">Notifikasi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="alertModalBody">
+                    Pesan notifikasi
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./assets/js/app.js"></script>
+</body>
+</html>
