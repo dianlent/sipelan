@@ -1,3 +1,8 @@
 {
-  "/page": "app/page.js"
+  "/tracking/page": "app/tracking/page.js",
+  "/pengaduan/page": "app/pengaduan/page.js",
+  "/login/page": "app/login/page.js",
+  "/settings/page": "app/settings/page.js",
+  "/page": "app/page.js",
+  "/admin/page": "app/admin/page.js"
 }

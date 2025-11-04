@@ -33,53 +33,53 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
   const statusOrder = ['masuk', 'terverifikasi', 'terdisposisi', 'tindak_lanjut', 'selesai']
   const currentIndex = statusOrder.indexOf(currentStatus)
 
-  const steps: TimelineStep[] = [
-    {
-      id: 1,
+  // Status mapping untuk judul dan deskripsi
+  const statusInfo: Record<string, { title: string; description: string; color: string }> = {
+    'masuk': {
       title: 'Pengaduan Masuk',
       description: 'Pelapor mengisi aduan melalui website',
-      status: currentIndex >= 0 ? 'completed' : 'pending',
-      icon: <FileText className="w-6 h-6" />,
-      color: 'blue',
-      date: timeline.find(t => t.status === 'masuk')?.created_at
+      color: 'gray'
     },
-    {
-      id: 2,
+    'terverifikasi': {
       title: 'Pengaduan Terverifikasi',
       description: 'Pengaduan sudah terverifikasi oleh admin',
-      status: currentIndex > 0 ? 'completed' : currentIndex === 0 ? 'current' : 'pending',
-      icon: <CheckCircle className="w-6 h-6" />,
-      color: 'green',
-      date: timeline.find(t => t.status === 'terverifikasi')?.created_at
+      color: 'blue'
     },
-    {
-      id: 3,
+    'terdisposisi': {
       title: 'Pengaduan Terdisposisi',
       description: 'Pengaduan sudah dikirim ke Bidang yang terkait',
-      status: currentIndex > 1 ? 'completed' : currentIndex === 1 ? 'current' : 'pending',
-      icon: <Send className="w-6 h-6" />,
-      color: 'purple',
-      date: timeline.find(t => t.status === 'terdisposisi')?.created_at
+      color: 'orange'
     },
-    {
-      id: 4,
+    'tindak_lanjut': {
       title: 'Pengaduan Tindak Lanjut',
-      description: 'Pengaduan sudah ditindaklanjuti oleh Bidang terkait',
-      status: currentIndex > 2 ? 'completed' : currentIndex === 2 ? 'current' : 'pending',
-      icon: <RefreshCw className="w-6 h-6" />,
-      color: 'orange',
-      date: timeline.find(t => t.status === 'tindak_lanjut')?.created_at
+      description: 'Pengaduan sedang ditindaklanjuti oleh Bidang terkait',
+      color: 'purple'
     },
-    {
-      id: 5,
+    'selesai': {
       title: 'Pengaduan Selesai',
       description: 'Pengaduan sudah selesai dan dikirim ke pelapor',
-      status: currentIndex > 3 ? 'completed' : currentIndex === 3 ? 'current' : 'pending',
-      icon: <CheckCheck className="w-6 h-6" />,
-      color: 'emerald',
-      date: timeline.find(t => t.status === 'selesai')?.created_at
+      color: 'teal'
     }
-  ]
+  }
+
+  // Build dynamic steps from actual timeline data
+  const steps: TimelineStep[] = timeline.map((item, index) => {
+    const info = statusInfo[item.status] || {
+      title: item.status,
+      description: item.keterangan,
+      color: 'gray'
+    }
+
+    return {
+      id: index + 1,
+      title: info.title,
+      description: item.keterangan || info.description,
+      status: index === timeline.length - 1 ? 'current' : 'completed',
+      icon: <CheckCircle className="w-6 h-6" />,
+      color: info.color,
+      date: item.created_at
+    }
+  })
 
   const getStepColor = (step: TimelineStep) => {
     if (step.status === 'completed') {
@@ -205,12 +205,6 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
                   {step.description}
                 </p>
                 
-                {/* Keterangan */}
-                {timeline.find(t => t.status === statusOrder[index])?.keterangan && (
-                  <p className="text-sm text-gray-500 mt-2 italic">
-                    {timeline.find(t => t.status === statusOrder[index])?.keterangan}
-                  </p>
-                )}
               </div>
             </motion.div>
           )
@@ -221,12 +215,14 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
       <div className="mt-8 pt-8 border-t border-gray-200">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-semibold text-gray-700">Progress Keseluruhan</span>
-          <span className="text-sm font-bold text-purple-600">{Math.round(((currentIndex + 1) / steps.length) * 100)}%</span>
+          <span className="text-sm font-bold text-purple-600">
+            {Math.round((timeline.length / 5) * 100)}%
+          </span>
         </div>
         <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: `${((currentIndex + 1) / steps.length) * 100}%` }}
+            animate={{ width: `${(timeline.length / 5) * 100}%` }}
             transition={{ duration: 1, ease: "easeOut" }}
             className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 rounded-full"
           />
@@ -234,6 +230,11 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
         <div className="flex justify-between mt-2 text-xs text-gray-500">
           <span>Mulai</span>
           <span>Selesai</span>
+        </div>
+        <div className="mt-3 text-center">
+          <p className="text-sm text-gray-600">
+            <span className="font-semibold text-purple-600">{timeline.length}</span> dari 5 tahap selesai
+          </p>
         </div>
       </div>
     </div>

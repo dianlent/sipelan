@@ -180,7 +180,7 @@ export default function HomePage() {
           ></motion.div>
 
           {/* Floating Particles */}
-          <div className="absolute inset-0">
+          <div className="absolute inset-0" suppressHydrationWarning>
             {[...Array(20)].map((_, i) => (
               <motion.div
                 key={i}
@@ -200,6 +200,7 @@ export default function HomePage() {
                   left: `${Math.random() * 100}%`,
                   top: `${Math.random() * 100}%`,
                 }}
+                suppressHydrationWarning
               />
             ))}
           </div>

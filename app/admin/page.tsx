@@ -18,7 +18,17 @@ import {
   Clock,
   AlertCircle,
   Home,
-  RefreshCw
+  RefreshCw,
+  User as UserIcon,
+  ClipboardCheck,
+  Mail,
+  Phone,
+  MapPin,
+  Facebook,
+  Twitter,
+  Instagram,
+  Youtube,
+  ClipboardList
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -45,6 +55,7 @@ export default function AdminPage() {
   const [keterangan, setKeterangan] = useState('')
   const [newStatus, setNewStatus] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
 
   // Computed stats - dinamis berdasarkan pengaduanList
   const stats = {
@@ -458,32 +469,106 @@ export default function AdminPage() {
             </div>
 
             <div className="flex items-center space-x-3">
-              <div className="hidden lg:flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold">
-                  {user.nama_lengkap.charAt(0)}
-                </div>
-                <div className="text-left">
-                  <p className="text-sm font-bold text-gray-900">{user.nama_lengkap}</p>
-                  <p className="text-xs text-purple-600 font-semibold">👑 Administrator</p>
-                </div>
+              {/* Profile Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="hidden lg:flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100 hover:shadow-md transition-all"
+                >
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
+                    {user.nama_lengkap.charAt(0)}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-bold text-gray-900">{user.nama_lengkap}</p>
+                    <p className="text-xs text-purple-600 font-semibold">👑 Administrator</p>
+                  </div>
+                  <motion.div
+                    animate={{ rotate: showProfileMenu ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </motion.div>
+                </button>
+
+                {/* Dropdown Menu */}
+                {showProfileMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden z-50"
+                  >
+                    {/* Profile Header */}
+                    <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-16 h-16 bg-white/20 backdrop-blur-lg rounded-2xl flex items-center justify-center text-white font-bold text-2xl border-2 border-white/30">
+                          {user.nama_lengkap.charAt(0)}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg">{user.nama_lengkap}</h3>
+                          <p className="text-sm text-white/80">{user.email}</p>
+                          <div className="flex items-center space-x-1 mt-1">
+                            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">👑 Admin</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="p-2">
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Informasi Akun</p>
+                      </div>
+                      
+                      <div className="space-y-1 py-2">
+                        <div className="px-4 py-2 hover:bg-gray-50 rounded-xl transition-colors">
+                          <div className="flex items-center space-x-3">
+                            <UserIcon className="w-4 h-4 text-gray-400" />
+                            <div>
+                              <p className="text-xs text-gray-500">Username</p>
+                              <p className="text-sm font-semibold text-gray-900">{user.username}</p>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="px-4 py-2 hover:bg-gray-50 rounded-xl transition-colors">
+                          <div className="flex items-center space-x-3">
+                            <Building className="w-4 h-4 text-gray-400" />
+                            <div>
+                              <p className="text-xs text-gray-500">Role</p>
+                              <p className="text-sm font-semibold text-gray-900 capitalize">{user.role}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-gray-100 mt-2 pt-2 space-y-1">
+                        <Link
+                          href="/settings"
+                          onClick={() => setShowProfileMenu(false)}
+                          className="w-full flex items-center space-x-3 px-4 py-2.5 hover:bg-gray-50 rounded-xl transition-colors text-left"
+                        >
+                          <Settings className="w-4 h-4 text-gray-600" />
+                          <span className="text-sm font-medium text-gray-700">Pengaturan</span>
+                        </Link>
+                        
+                        <button
+                          onClick={() => {
+                            setShowProfileMenu(false)
+                            logout()
+                            toast.success('Logout berhasil')
+                          }}
+                          className="w-full flex items-center space-x-3 px-4 py-2.5 hover:bg-red-50 rounded-xl transition-colors text-left text-red-600"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span className="text-sm font-medium">Logout</span>
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
               </div>
-              <Link
-                href="/"
-                className="flex items-center space-x-2 px-4 py-2.5 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 hover:scale-105 transition-all font-semibold"
-              >
-                <Home className="w-4 h-4" />
-                <span className="hidden md:inline">Home</span>
-              </Link>
-              <button
-                onClick={() => {
-                  logout()
-                  toast.success('Logout berhasil')
-                }}
-                className="flex items-center space-x-2 px-4 py-2.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 hover:scale-105 transition-all font-semibold"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden md:inline">Logout</span>
-              </button>
             </div>
           </div>
         </div>
@@ -636,40 +721,65 @@ export default function AdminPage() {
             {pengaduanList.map((pengaduan, index) => (
               <motion.div
                 key={pengaduan.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="group border-2 border-gray-200 rounded-2xl p-6 hover:shadow-xl hover:border-purple-200 transition-all bg-gradient-to-r from-white to-gray-50/50"
+                className="group relative bg-white border-l-4 border-purple-500 rounded-2xl p-6 shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden"
               >
-                <div className="flex items-start justify-between">
+                {/* Background Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-50/50 via-transparent to-pink-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                
+                <div className="relative flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <span className="text-sm font-mono font-semibold text-primary-600">
-                        {pengaduan.kode_pengaduan}
-                      </span>
-                      <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(pengaduan.status)}`}>
+                    {/* Header with Code and Status */}
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="flex items-center space-x-2 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200">
+                        <FileText className="w-4 h-4 text-purple-600" />
+                        <span className="text-sm font-mono font-bold text-purple-700">
+                          {pengaduan.kode_pengaduan}
+                        </span>
+                      </div>
+                      <span className={`inline-flex items-center space-x-1.5 px-4 py-1.5 rounded-lg text-xs font-bold shadow-sm ${getStatusBadge(pengaduan.status)}`}>
                         {getStatusIcon(pengaduan.status)}
                         <span>{getStatusLabel(pengaduan.status)}</span>
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">
+                    
+                    {/* Title */}
+                    <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-purple-700 transition-colors line-clamp-2">
                       {pengaduan.judul_pengaduan}
                     </h3>
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                      <span>Kategori: {pengaduan.kategori}</span>
-                      <span>Pelapor: {pengaduan.nama_pelapor}</span>
-                      <span>{formatDate(pengaduan.created_at)}</span>
+                    
+                    {/* Meta Information */}
+                    <div className="flex flex-wrap gap-4 text-sm">
+                      <div className="flex items-center space-x-1.5 text-gray-600">
+                        <div className="w-1.5 h-1.5 bg-purple-500 rounded-full"></div>
+                        <span className="font-medium">Kategori:</span>
+                        <span className="text-gray-900 font-semibold">{pengaduan.kategori}</span>
+                      </div>
+                      <div className="flex items-center space-x-1.5 text-gray-600">
+                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                        <span className="font-medium">Pelapor:</span>
+                        <span className="text-gray-900 font-semibold">{pengaduan.nama_pelapor}</span>
+                      </div>
+                      <div className="flex items-center space-x-1.5 text-gray-600">
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>{formatDate(pengaduan.created_at)}</span>
+                      </div>
                       {pengaduan.bidang && (
-                        <span className="text-primary-600 font-medium">
-                          📍 {pengaduan.bidang}
-                        </span>
+                        <div className="flex items-center space-x-1.5 bg-gradient-to-r from-purple-100 to-pink-100 px-3 py-1 rounded-lg">
+                          <Building className="w-3.5 h-3.5 text-purple-600" />
+                          <span className="text-purple-700 font-semibold text-xs">{pengaduan.bidang}</span>
+                        </div>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2 ml-4">
+                  
+                  {/* Action Buttons */}
+                  <div className="flex flex-col space-y-2 ml-6">
                     <Link
                       href={`/tracking?kode=${pengaduan.kode_pengaduan}`}
-                      className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors flex items-center space-x-2"
+                      className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all flex items-center space-x-2 shadow-md hover:shadow-lg hover:scale-105 font-semibold"
                     >
                       <Eye className="w-4 h-4" />
                       <span>Detail</span>
@@ -680,7 +790,7 @@ export default function AdminPage() {
                         setNewStatus(pengaduan.status)
                         setShowStatusModal(true)
                       }}
-                      className="px-4 py-2 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-colors flex items-center space-x-2"
+                      className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all flex items-center space-x-2 shadow-md hover:shadow-lg hover:scale-105 font-semibold"
                     >
                       <RefreshCw className="w-4 h-4" />
                       <span>Status</span>
@@ -704,6 +814,143 @@ export default function AdminPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Footer */}
+      <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white mt-20">
+        {/* Main Footer */}
+        <div className="container mx-auto px-4 py-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+            {/* Brand Section */}
+            <div className="space-y-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center">
+                  <ClipboardCheck className="w-7 h-7 text-white" />
+                </div>
+                <span className="text-2xl font-bold">SIPelan</span>
+              </div>
+              <p className="text-gray-400 leading-relaxed">
+                Sistem Pengaduan Layanan Online Naker - Melayani pengaduan masyarakat terkait ketenagakerjaan dengan cepat dan transparan.
+              </p>
+              <div className="flex space-x-3">
+                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
+                  <Facebook className="w-5 h-5" />
+                </a>
+                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
+                  <Twitter className="w-5 h-5" />
+                </a>
+                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
+                  <Instagram className="w-5 h-5" />
+                </a>
+                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
+                  <Youtube className="w-5 h-5" />
+                </a>
+              </div>
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h3 className="text-lg font-bold mb-6 text-white">Menu Admin</h3>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="/admin" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
+                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
+                    <span>Dashboard Admin</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/settings" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
+                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
+                    <span>Pengaturan</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
+                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
+                    <span>Beranda</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/tracking" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
+                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
+                    <span>Tracking Pengaduan</span>
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Layanan */}
+            <div>
+              <h3 className="text-lg font-bold mb-6 text-white">Layanan Kami</h3>
+              <ul className="space-y-3">
+                <li className="text-gray-400 flex items-start space-x-2">
+                  <ClipboardList className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
+                  <span>Manajemen Pengaduan</span>
+                </li>
+                <li className="text-gray-400 flex items-start space-x-2">
+                  <Users className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
+                  <span>Disposisi ke Bidang</span>
+                </li>
+                <li className="text-gray-400 flex items-start space-x-2">
+                  <FileText className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
+                  <span>Monitoring Status</span>
+                </li>
+                <li className="text-gray-400 flex items-start space-x-2">
+                  <Clock className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
+                  <span>Laporan Real-time</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Contact Info */}
+            <div>
+              <h3 className="text-lg font-bold mb-6 text-white">Hubungi Kami</h3>
+              <ul className="space-y-4">
+                <li className="flex items-start space-x-3 text-gray-400">
+                  <MapPin className="w-5 h-5 text-purple-500 flex-shrink-0 mt-1" />
+                  <span>Jl. Disnaker No. 123<br />Jakarta Pusat, DKI Jakarta<br />10110</span>
+                </li>
+                <li className="flex items-center space-x-3 text-gray-400">
+                  <Phone className="w-5 h-5 text-purple-500 flex-shrink-0" />
+                  <span>(021) 1234-5678</span>
+                </li>
+                <li className="flex items-center space-x-3 text-gray-400">
+                  <Mail className="w-5 h-5 text-purple-500 flex-shrink-0" />
+                  <span>info@disnaker.go.id</span>
+                </li>
+              </ul>
+              <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10">
+                <p className="text-sm text-gray-400 mb-2">Jam Layanan:</p>
+                <p className="text-white font-semibold">Senin - Jumat</p>
+                <p className="text-gray-400 text-sm">08:00 - 16:00 WIB</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Footer */}
+        <div className="border-t border-white/10">
+          <div className="container mx-auto px-4 py-6">
+            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+              <p className="text-gray-400 text-sm text-center md:text-left">
+                &copy; 2024 Dinas Ketenagakerjaan. All rights reserved.
+              </p>
+              <div className="flex items-center space-x-6 text-sm">
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  Kebijakan Privasi
+                </a>
+                <span className="text-gray-600">|</span>
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  Syarat & Ketentuan
+                </a>
+                <span className="text-gray-600">|</span>
+                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                  FAQ
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
