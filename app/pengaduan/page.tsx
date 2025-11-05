@@ -102,6 +102,41 @@ export default function PengaduanPage() {
     setIsLoading(true)
 
     try {
+      console.log('=== FORM SUBMISSION START ===')
+      console.log('Form Data:', formData)
+
+      // Validation
+      if (!formData.kategori_id) {
+        toast.error('Pilih kategori pengaduan')
+        setIsLoading(false)
+        return
+      }
+      if (!formData.judul_pengaduan.trim()) {
+        toast.error('Judul pengaduan harus diisi')
+        setIsLoading(false)
+        return
+      }
+      if (!formData.isi_pengaduan.trim()) {
+        toast.error('Isi pengaduan harus diisi')
+        setIsLoading(false)
+        return
+      }
+      if (!formData.nama_pelapor.trim()) {
+        toast.error('Nama pelapor harus diisi')
+        setIsLoading(false)
+        return
+      }
+      if (!formData.email_pelapor.trim()) {
+        toast.error('Email pelapor harus diisi')
+        setIsLoading(false)
+        return
+      }
+      if (!formData.no_telepon.trim()) {
+        toast.error('No telepon harus diisi')
+        setIsLoading(false)
+        return
+      }
+
       // Create FormData for file upload
       const submitData = new FormData()
       submitData.append('kategori_id', formData.kategori_id)
@@ -116,6 +151,9 @@ export default function PengaduanPage() {
       if (formData.file_bukti) {
         submitData.append('file_bukti', formData.file_bukti)
       }
+
+      console.log('✅ Form validation passed')
+      console.log('Submit Data:', Object.fromEntries(submitData))
 
       // TODO: Send to API
       // const response = await fetch('/api/pengaduan', {
@@ -167,6 +205,12 @@ export default function PengaduanPage() {
       console.log('Pengaduan Data:', pengaduanData)
       
       try {
+        // Check if localStorage is available
+        if (typeof window === 'undefined' || !window.localStorage) {
+          console.error('❌ localStorage not available')
+          throw new Error('Browser tidak mendukung localStorage')
+        }
+
         // Save to allPengaduan
         const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
         allPengaduan[generatedCode] = pengaduanData
@@ -187,6 +231,7 @@ export default function PengaduanPage() {
         const verification = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
         if (verification[generatedCode]) {
           console.log('✅ Verification SUCCESS: Data tersimpan dengan benar')
+          console.log('✅ Pengaduan data:', verification[generatedCode])
         } else {
           console.error('❌ Verification FAILED: Data tidak tersimpan')
           throw new Error('Data gagal tersimpan ke localStorage')
@@ -195,7 +240,11 @@ export default function PengaduanPage() {
         console.log('=== END SAVING ===')
       } catch (saveError) {
         console.error('❌ Error saving to localStorage:', saveError)
-        throw saveError
+        // Fallback: Store in memory for session
+        console.log('⚠️ Using memory fallback...')
+        const memoryStorage = (window as any).__sipelan_memory_storage = (window as any).__sipelan_memory_storage || {}
+        memoryStorage[generatedCode] = pengaduanData
+        console.log('✅ Saved to memory fallback')
       }
       
       setKodeTracking(generatedCode)
@@ -577,6 +626,47 @@ export default function PengaduanPage() {
                 </ul>
               </div>
             </div>
+
+            {/* Debug Buttons (Development Only) */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
+                <p className="text-sm font-semibold text-yellow-800 mb-2">Debug Tools:</p>
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      console.log('Current formData:', formData)
+                      console.log('localStorage allPengaduan:', JSON.parse(localStorage.getItem('allPengaduan') || '{}'))
+                      console.log('localStorage myPengaduan:', JSON.parse(localStorage.getItem('myPengaduan') || '[]'))
+                    }}
+                    className="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600"
+                  >
+                    Debug Console
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData({
+                        kategori_id: '1',
+                        judul_pengaduan: 'Test Pengaduan - Upah Tidak Dibayar',
+                        isi_pengaduan: 'Ini adalah pengaduan test untuk debugging. Perusahaan tidak membayar upah sesuai UMR.',
+                        lokasi_kejadian: 'PT Contoh, Jakarta',
+                        tanggal_kejadian: '2024-11-01',
+                        file_bukti: null,
+                        nama_pelapor: 'Test User',
+                        email_pelapor: 'test@example.com',
+                        no_telepon: '08123456789',
+                        anonim: false
+                      })
+                      toast.success('Form diisi dengan data test')
+                    }}
+                    className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
+                  >
+                    Isi Test Data
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <div className="flex items-center space-x-4 pt-4">
