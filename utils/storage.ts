@@ -110,26 +110,42 @@ export const assignPengaduanToBidang = (
   keterangan: string,
   assignedBy: string
 ): boolean => {
+  console.log('=== ASSIGN PENGADUAN TO BIDANG ===')
+  console.log('Code:', code)
+  console.log('Bidang:', bidang)
+  console.log('Keterangan:', keterangan)
+  console.log('Assigned By:', assignedBy)
+  
   const pengaduan = getPengaduanByCode(code)
   if (!pengaduan) {
-    console.error(`Pengaduan ${code} not found`)
+    console.error(`❌ Pengaduan ${code} not found`)
     return false
   }
 
-  // Update bidang
+  // Update bidang (save as string for simplicity and consistency)
   pengaduan.bidang = bidang
-  pengaduan.status = 'diproses'
+  pengaduan.status = 'terdisposisi'  // Use 'terdisposisi' not 'diproses'
 
   // Add timeline entry
   pengaduan.timeline.push({
-    status: 'diproses',
+    status: 'terdisposisi',
     keterangan: `Didisposisi ke ${bidang}. ${keterangan}`,
     created_at: new Date().toISOString(),
     updated_by: assignedBy
   })
 
+  console.log('✅ Bidang assigned:', pengaduan.bidang)
+  console.log('✅ Status updated:', pengaduan.status)
+
   // Save updated pengaduan
-  return savePengaduan(code, pengaduan)
+  const success = savePengaduan(code, pengaduan)
+  if (success) {
+    console.log('✅ Pengaduan saved successfully')
+  } else {
+    console.error('❌ Failed to save pengaduan')
+  }
+  
+  return success
 }
 
 /**

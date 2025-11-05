@@ -87,14 +87,43 @@ export default function BidangPage() {
 
   const loadPengaduan = async (kodeBidang: string) => {
     try {
+      console.log('=== LOADING BIDANG PENGADUAN ===')
+      console.log('Kode Bidang:', kodeBidang)
+      
       // Load pengaduan from localStorage that are dispositioned to this bidang
       const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+      console.log('Total Pengaduan in DB:', Object.keys(allPengaduan).length)
+      
+      // Map bidang kode to bidang name for matching
+      const bidangMap: Record<string, string> = {
+        'HI': 'Bidang Hubungan Industrial',
+        'LATTAS': 'Bidang Latihan Kerja dan Produktivitas',
+        'PTPK': 'Bidang PTPK',
+        'BLK': 'UPTD BLK Pati',
+        'SEKRETARIAT': 'Sekretariat'
+      }
+      
+      const bidangName = bidangMap[kodeBidang]
+      console.log('Looking for bidang:', bidangName)
       
       // Filter only pengaduan that are dispositioned to this bidang
       const bidangPengaduan: Pengaduan[] = Object.values(allPengaduan)
         .filter((p: any) => {
-          // Check if pengaduan has been dispositioned to this bidang
-          return p.bidang && p.bidang.kode_bidang === kodeBidang
+          // Check multiple formats for backward compatibility
+          const hasBidang = p.bidang && (
+            // Format 1: bidang as string (from storage utility)
+            p.bidang === bidangName ||
+            // Format 2: bidang as object with kode_bidang
+            (typeof p.bidang === 'object' && p.bidang.kode_bidang === kodeBidang) ||
+            // Format 3: bidang as object with nama_bidang
+            (typeof p.bidang === 'object' && p.bidang.nama_bidang === bidangName)
+          )
+          
+          if (hasBidang) {
+            console.log('✅ Found pengaduan for this bidang:', p.kode_pengaduan, p.bidang)
+          }
+          
+          return hasBidang
         })
         .map((p: any) => ({
           id: p.id,
