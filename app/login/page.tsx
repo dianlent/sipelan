@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Mail, Lock, LogIn, ArrowLeft, Shield, Zap, CheckCircle, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { login } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -32,13 +34,19 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (data.success) {
+        // Update Auth Context with user data and token
+        login(data.data.user, data.data.token)
+        
         toast.success('Login berhasil!')
-        localStorage.setItem('authToken', data.data.token)
-        localStorage.setItem('currentUser', JSON.stringify(data.data.user))
+        
+        // Small delay to ensure state is updated
+        await new Promise(resolve => setTimeout(resolve, 100))
         
         // Redirect based on role
         if (data.data.user.role === 'admin') {
           router.push('/admin')
+        } else if (data.data.user.role === 'bidang') {
+          router.push('/bidang')
         } else {
           router.push('/dashboard')
         }

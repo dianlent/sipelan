@@ -47,8 +47,15 @@ export default function DashboardPage() {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
 
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (isLoading) {
+      console.log('⏳ Auth is loading...')
+      return
+    }
+
     // Check authentication using AuthContext
-    if (!isLoading && !isAuthenticated) {
+    if (!isAuthenticated) {
+      console.log('❌ Not authenticated, redirecting to login')
       toast.error('Silakan login terlebih dahulu')
       router.push('/login')
       return
@@ -56,6 +63,7 @@ export default function DashboardPage() {
 
     // Load data based on role when user is available
     if (user) {
+      console.log('✅ Authenticated, loading data')
       if (user.role === 'bidang') {
         loadBidangData(user.kode_bidang)
       } else {
@@ -236,12 +244,21 @@ export default function DashboardPage() {
     toast.success('Logout berhasil')
   }
 
-  if (!user) {
+  // Show loading state while checking authentication
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Memuat...</p>
+        </div>
       </div>
     )
+  }
+
+  // Don't render anything if not authenticated (will redirect)
+  if (!isAuthenticated || !user) {
+    return null
   }
 
   return (

@@ -56,20 +56,31 @@ export default function BidangPage() {
   const [filterStatus, setFilterStatus] = useState('all')
 
   useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) {
+      console.log('⏳ Auth is loading...')
+      return
+    }
+
     // Check authentication using AuthContext
-    if (!authLoading && !isAuthenticated) {
+    if (!isAuthenticated) {
+      console.log('❌ Not authenticated, redirecting to login')
       toast.error('Silakan login terlebih dahulu')
       router.push('/login')
       return
     }
 
+    // Check role authorization
     if (user && user.role !== 'bidang') {
+      console.log('❌ Not bidang role, redirecting to dashboard')
       toast.error('Akses ditolak. Halaman ini hanya untuk bidang')
       router.push('/dashboard')
       return
     }
 
+    // Load data if authenticated and authorized
     if (user && user.kode_bidang) {
+      console.log('✅ Authenticated as bidang, loading data')
       loadPengaduan(user.kode_bidang)
     }
   }, [user, authLoading, isAuthenticated, router])
@@ -303,12 +314,21 @@ export default function BidangPage() {
     ? pengaduanList 
     : pengaduanList.filter(p => p.status === filterStatus)
 
-  if (!user) {
+  // Show loading state while checking authentication
+  if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Memuat...</p>
+        </div>
       </div>
     )
+  }
+
+  // Don't render anything if not authenticated (will redirect)
+  if (!isAuthenticated || !user) {
+    return null
   }
 
   return (
