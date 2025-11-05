@@ -32,6 +32,13 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
+import { 
+  getAllPengaduan, 
+  updatePengaduanStatus, 
+  assignPengaduanToBidang,
+  getPengaduanStats,
+  type PengaduanData 
+} from '@/utils/storage'
 
 interface Pengaduan {
   id: string
@@ -189,41 +196,29 @@ export default function AdminPage() {
       console.log('Pengaduan ID:', selectedPengaduan.id)
       console.log('New Status:', newStatus)
 
-      // Update localStorage
-      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
-      const pengaduanData = allPengaduan[selectedPengaduan.kode_pengaduan]
-      
-      if (pengaduanData) {
-        // Update status
-        pengaduanData.status = newStatus
-        
-        // Add to timeline
-        const statusKeterangan: Record<string, string> = {
-          'masuk': 'Pengaduan telah diterima sistem',
-          'terverifikasi': 'Pengaduan telah diverifikasi oleh admin dan dinyatakan valid',
-          'terdisposisi': 'Pengaduan telah didisposisikan ke bidang terkait',
-          'tindak_lanjut': 'Pengaduan sedang ditindaklanjuti oleh bidang terkait',
-          'selesai': 'Pengaduan telah selesai ditindaklanjuti'
-        }
-        
-        if (!pengaduanData.timeline) {
-          pengaduanData.timeline = []
-        }
-        
-        pengaduanData.timeline.push({
-          status: newStatus,
-          keterangan: statusKeterangan[newStatus] || `Status diubah menjadi ${newStatus}`,
-          created_at: new Date().toISOString()
-        })
-        
-        // Save back to localStorage
-        allPengaduan[selectedPengaduan.kode_pengaduan] = pengaduanData
-        localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
-        
-        console.log('✅ Status updated in localStorage')
-        console.log('Timeline:', pengaduanData.timeline)
+      // Status keterangan map
+      const statusKeterangan: Record<string, string> = {
+        'masuk': 'Pengaduan telah diterima sistem',
+        'terverifikasi': 'Pengaduan telah diverifikasi oleh admin dan dinyatakan valid',
+        'terdisposisi': 'Pengaduan telah didisposisikan ke bidang terkait',
+        'tindak_lanjut': 'Pengaduan sedang ditindaklanjuti oleh bidang terkait',
+        'selesai': 'Pengaduan telah selesai ditindaklanjuti',
+        'ditolak': 'Pengaduan ditolak karena tidak memenuhi syarat'
       }
 
+      // Update status using storage utility
+      const success = updatePengaduanStatus(
+        selectedPengaduan.kode_pengaduan,
+        newStatus,
+        statusKeterangan[newStatus] || `Status diubah menjadi ${newStatus}`,
+        user?.nama_lengkap || 'Admin'
+      )
+
+      if (!success) {
+        throw new Error('Gagal update status')
+      }
+
+      console.log('✅ Status updated successfully')
       await new Promise(resolve => setTimeout(resolve, 500))
 
       // Update local state
@@ -260,39 +255,19 @@ export default function AdminPage() {
       console.log('Bidang:', disposisiBidang)
       console.log('Keterangan:', keterangan)
 
-      // Update localStorage
-      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
-      const pengaduanData = allPengaduan[selectedPengaduan.kode_pengaduan]
-      
-      if (pengaduanData) {
-        // Update status to terdisposisi
-        pengaduanData.status = 'terdisposisi'
-        
-        // Add bidang info
-        pengaduanData.bidang = {
-          id: disposisiBidang,
-          nama_bidang: disposisiBidang
-        }
-        
-        // Add to timeline
-        if (!pengaduanData.timeline) {
-          pengaduanData.timeline = []
-        }
-        
-        pengaduanData.timeline.push({
-          status: 'terdisposisi',
-          keterangan: `Pengaduan didisposisikan ke ${disposisiBidang}. ${keterangan}`,
-          created_at: new Date().toISOString()
-        })
-        
-        // Save back to localStorage
-        allPengaduan[selectedPengaduan.kode_pengaduan] = pengaduanData
-        localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
-        
-        console.log('✅ Disposisi saved to localStorage')
-        console.log('Updated data:', pengaduanData)
+      // Assign pengaduan to bidang using storage utility
+      const success = assignPengaduanToBidang(
+        selectedPengaduan.kode_pengaduan,
+        disposisiBidang,
+        keterangan,
+        user?.nama_lengkap || 'Admin'
+      )
+
+      if (!success) {
+        throw new Error('Gagal disposisi pengaduan')
       }
 
+      console.log('✅ Disposisi saved successfully')
       await new Promise(resolve => setTimeout(resolve, 500))
 
       toast.success(`Pengaduan berhasil didisposisikan ke ${disposisiBidang}`)

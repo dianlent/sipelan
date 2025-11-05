@@ -250,8 +250,22 @@ export default function PengaduanPage() {
       setKodeTracking(generatedCode)
       setShowSuccessModal(true)
       toast.success('Pengaduan berhasil diajukan dan tersimpan!')
+      
+      // Reset form after successful submission
+      setFormData({
+        kategori_id: '',
+        judul_pengaduan: '',
+        isi_pengaduan: '',
+        lokasi_kejadian: '',
+        tanggal_kejadian: '',
+        file_bukti: null,
+        nama_pelapor: '',
+        email_pelapor: '',
+        no_telepon: '',
+        anonim: false
+      })
     } catch (error) {
-      toast.error('Gagal mengajukan pengaduan')
+      toast.error('Gagal mengajukan pengaduan. Silakan coba lagi.')
       console.error('Submit error:', error)
     } finally {
       setIsLoading(false)

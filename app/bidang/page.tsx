@@ -22,6 +22,11 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
+import { 
+  getAllPengaduan, 
+  updatePengaduanStatus, 
+  addPengaduanResponse 
+} from '@/utils/storage'
 
 interface Pengaduan {
   id: string
@@ -195,63 +200,54 @@ export default function BidangPage() {
 
     setIsLoading(true)
     try {
-      // Update pengaduan in localStorage
-      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
-      const pengaduanData = allPengaduan[selectedPengaduan.kode_pengaduan]
+      console.log('=== SUBMIT TANGGAPAN ===')
+      console.log('Pengaduan:', selectedPengaduan.kode_pengaduan)
+      console.log('Tanggapan:', tanggapan)
+
+      // Add response using storage utility
+      const success = addPengaduanResponse(
+        selectedPengaduan.kode_pengaduan,
+        tanggapan,
+        user?.nama_lengkap || 'Bidang'
+      )
+
+      if (!success) {
+        throw new Error('Gagal menyimpan tanggapan')
+      }
+
+      console.log('✅ Tanggapan saved successfully')
       
-      if (pengaduanData) {
-        // Add tanggapan to timeline
-        if (!pengaduanData.timeline) {
-          pengaduanData.timeline = []
-        }
-        
-        pengaduanData.timeline.push({
-          status: 'tindak_lanjut',
-          keterangan: `Tanggapan dari ${user?.nama_lengkap || 'Bidang'}: ${tanggapan}`,
-          created_at: new Date().toISOString(),
-          tanggapan: tanggapan,
-          petugas: user?.nama_lengkap || 'Bidang'
-        })
-        
-        // Update status to tindak_lanjut
-        pengaduanData.status = 'tindak_lanjut'
-        
-        // Save back to localStorage
-        allPengaduan[selectedPengaduan.kode_pengaduan] = pengaduanData
-        localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
-        
-        // Simulate sending email notification
-        const emailData = {
-          to: pengaduanData.user?.email || selectedPengaduan.email_pelapor,
-          subject: `Tanggapan Pengaduan ${selectedPengaduan.kode_pengaduan}`,
-          body: `
-            <h2>Tanggapan Pengaduan</h2>
-            <p>Pengaduan Anda dengan kode <strong>${selectedPengaduan.kode_pengaduan}</strong> telah mendapat tanggapan:</p>
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
-              <p><strong>Judul:</strong> ${selectedPengaduan.judul_pengaduan}</p>
-              <p><strong>Tanggapan:</strong> ${tanggapan}</p>
-              <p><strong>Petugas:</strong> ${user?.nama_lengkap || 'Bidang'}</p>
-              <p><strong>Tanggal:</strong> ${new Date().toLocaleString('id-ID')}</p>
-            </div>
-            <p>Anda dapat melacak status pengaduan Anda di: <a href="${window.location.origin}/tracking?kode=${selectedPengaduan.kode_pengaduan}">Tracking Pengaduan</a></p>
-          `
-        }
-        
-        console.log('📧 Email notification would be sent:', emailData)
-        
-        // Update local state
-        setPengaduanList(prev => 
-          prev.map(p => 
-            p.id === selectedPengaduan.id 
-              ? { ...p, status: 'tindak_lanjut' } 
-              : p
-          )
+      // Simulate sending email notification
+      const emailData = {
+        to: selectedPengaduan.email_pelapor,
+        subject: `Tanggapan Pengaduan ${selectedPengaduan.kode_pengaduan}`,
+        body: `
+          <h2>Tanggapan Pengaduan</h2>
+          <p>Pengaduan Anda dengan kode <strong>${selectedPengaduan.kode_pengaduan}</strong> telah mendapat tanggapan:</p>
+          <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
+            <p><strong>Judul:</strong> ${selectedPengaduan.judul_pengaduan}</p>
+            <p><strong>Tanggapan:</strong> ${tanggapan}</p>
+            <p><strong>Petugas:</strong> ${user?.nama_lengkap || 'Bidang'}</p>
+            <p><strong>Tanggal:</strong> ${new Date().toLocaleString('id-ID')}</p>
+          </div>
+          <p>Anda dapat melacak status pengaduan Anda di tracking page</p>
+        `
+      }
+      
+      console.log('📧 Email notification would be sent:', emailData)
+      
+      // Update local state
+      setPengaduanList(prev => 
+        prev.map(p => 
+          p.id === selectedPengaduan.id 
+            ? { ...p, status: 'selesai' } 
+            : p
         )
-        
-        // Reload data
-        if (user?.kode_bidang) {
-          loadPengaduan(user.kode_bidang)
-        }
+      )
+      
+      // Reload data
+      if (user?.kode_bidang) {
+        loadPengaduan(user.kode_bidang)
       }
 
       toast.success('Tanggapan berhasil dikirim! Email notifikasi telah dikirim ke pelapor', {
