@@ -789,17 +789,17 @@ export default function HomePage() {
                 &copy; 2024 Dinas Ketenagakerjaan. All rights reserved.
               </p>
               <div className="flex items-center space-x-6 text-sm">
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/kebijakan-privasi" className="text-gray-400 hover:text-white transition-colors">
                   Kebijakan Privasi
-                </a>
+                </Link>
                 <span className="text-gray-600">|</span>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/syarat-ketentuan" className="text-gray-400 hover:text-white transition-colors">
                   Syarat & Ketentuan
-                </a>
+                </Link>
                 <span className="text-gray-600">|</span>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/faq" className="text-gray-400 hover:text-white transition-colors">
                   FAQ
-                </a>
+                </Link>
               </div>
             </div>
           </div>

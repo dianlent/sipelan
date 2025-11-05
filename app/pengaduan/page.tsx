@@ -52,7 +52,8 @@ export default function PengaduanPage() {
     file_bukti: null as File | null,
     nama_pelapor: '',
     email_pelapor: '',
-    no_telepon: ''
+    no_telepon: '',
+    anonim: false
   })
 
   useEffect(() => {
@@ -111,6 +112,7 @@ export default function PengaduanPage() {
       submitData.append('nama_pelapor', formData.nama_pelapor)
       submitData.append('email_pelapor', formData.email_pelapor)
       submitData.append('no_telepon', formData.no_telepon)
+      submitData.append('anonim', formData.anonim ? 'true' : 'false')
       if (formData.file_bukti) {
         submitData.append('file_bukti', formData.file_bukti)
       }
@@ -145,8 +147,9 @@ export default function PengaduanPage() {
         file_bukti: formData.file_bukti?.name || null,
         created_at: new Date().toISOString(),
         user: {
-          nama_lengkap: formData.nama_pelapor,
-          email: formData.email_pelapor
+          nama_lengkap: formData.anonim ? 'Anonim' : formData.nama_pelapor,
+          email: formData.anonim ? '' : formData.email_pelapor,
+          anonim: formData.anonim
         },
         no_telepon: formData.no_telepon,
         timeline: [
@@ -397,6 +400,21 @@ export default function PengaduanPage() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Opsi Anonim */}
+            <div className="flex items-start gap-3 bg-white rounded-xl border border-gray-200 p-4">
+              <input
+                id="anonim"
+                type="checkbox"
+                checked={formData.anonim}
+                onChange={(e) => setFormData({ ...formData, anonim: e.target.checked })}
+                className="mt-1 w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              />
+              <label htmlFor="anonim" className="text-sm text-gray-700">
+                <span className="font-semibold">Ajukan sebagai Anonim</span>
+                <span className="block text-gray-600 mt-1">Nama lengkap dan email Anda tidak akan ditampilkan di tampilan publik. Kami tetap menyimpannya untuk keperluan verifikasi dan komunikasi jika diperlukan.</span>
+              </label>
             </div>
 
             {/* Kategori */}
