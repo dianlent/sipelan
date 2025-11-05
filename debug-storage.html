@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Storage - SIPelan</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 24px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .info {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        .success {
+            background: #d4edda;
+            border-left-color: #28a745;
+        }
+        .warning {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+        .error {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .pengaduan-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+        .pengaduan-item h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .pengaduan-item p {
+            margin: 5px 0;
+            color: #555;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 5px;
+        }
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        .stat-card h3 {
+            font-size: 36px;
+            margin-bottom: 5px;
+        }
+        .stat-card p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔍 Debug Storage - SIPelan</h1>
+            <p style="color: #666; margin-bottom: 20px;">Tool untuk memeriksa data pengaduan di localStorage</p>
+            
+            <div class="info">
+                <strong>ℹ️ Informasi:</strong> Tool ini akan menampilkan semua data pengaduan yang tersimpan di browser Anda.
+            </div>
+
+            <button class="btn" onclick="checkStorage()">🔄 Refresh Data</button>
+            <button class="btn btn-danger" onclick="clearStorage()">🗑️ Hapus Semua Data</button>
+            <button class="btn" onclick="addSampleData()">➕ Tambah Data Sample</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function checkStorage() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            // Check allPengaduan
+            const allPengaduanStr = localStorage.getItem('allPengaduan');
+            const myPengaduanStr = localStorage.getItem('myPengaduan');
+
+            let html = '';
+
+            // Stats
+            html += '<div class="card"><h2>📊 Statistik</h2><div class="stats">';
+            
+            if (allPengaduanStr) {
+                const allPengaduan = JSON.parse(allPengaduanStr);
+                const count = Object.keys(allPengaduan).length;
+                html += `<div class="stat-card"><h3>${count}</h3><p>Total Pengaduan</p></div>`;
+            } else {
+                html += '<div class="stat-card"><h3>0</h3><p>Total Pengaduan</p></div>';
+            }
+
+            if (myPengaduanStr) {
+                const myPengaduan = JSON.parse(myPengaduanStr);
+                html += `<div class="stat-card"><h3>${myPengaduan.length}</h3><p>Pengaduan Saya</p></div>`;
+            } else {
+                html += '<div class="stat-card"><h3>0</h3><p>Pengaduan Saya</p></div>';
+            }
+
+            html += '</div></div>';
+
+            // All Pengaduan
+            html += '<div class="card"><h2>📋 All Pengaduan (allPengaduan)</h2>';
+            
+            if (allPengaduanStr) {
+                try {
+                    const allPengaduan = JSON.parse(allPengaduanStr);
+                    const keys = Object.keys(allPengaduan);
+                    
+                    if (keys.length === 0) {
+                        html += '<div class="info warning">⚠️ Object allPengaduan ada tapi kosong</div>';
+                    } else {
+                        html += `<div class="info success">✅ Ditemukan ${keys.length} pengaduan</div>`;
+                        
+                        keys.forEach(key => {
+                            const p = allPengaduan[key];
+                            html += `
+                                <div class="pengaduan-item">
+                                    <h3>${p.kode_pengaduan || key}</h3>
+                                    <p><strong>Judul:</strong> ${p.judul_pengaduan || '-'}</p>
+                                    <p><strong>Kategori:</strong> ${p.kategori || '-'}</p>
+                                    <p><strong>Status:</strong> <span class="badge badge-info">${p.status || '-'}</span></p>
+                                    <p><strong>Pelapor:</strong> ${p.user?.nama_lengkap || 'Anonim'} ${p.user?.anonim ? '<span class="badge badge-warning">ANONIM</span>' : ''}</p>
+                                    <p><strong>Email:</strong> ${p.user?.email || '-'}</p>
+                                    <p><strong>Tanggal:</strong> ${p.created_at ? new Date(p.created_at).toLocaleString('id-ID') : '-'}</p>
+                                    <p><strong>Bidang:</strong> ${p.bidang?.nama_bidang || 'Belum didisposisi'}</p>
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    html += '<details style="margin-top: 20px;"><summary style="cursor: pointer; font-weight: 600; color: #667eea;">🔍 Lihat Raw JSON</summary>';
+                    html += '<pre>' + JSON.stringify(allPengaduan, null, 2) + '</pre></details>';
+                } catch (e) {
+                    html += `<div class="info error">❌ Error parsing JSON: ${e.message}</div>`;
+                }
+            } else {
+                html += '<div class="info warning">⚠️ Key "allPengaduan" tidak ditemukan di localStorage</div>';
+            }
+            
+            html += '</div>';
+
+            // My Pengaduan
+            html += '<div class="card"><h2>👤 My Pengaduan (myPengaduan)</h2>';
+            
+            if (myPengaduanStr) {
+                try {
+                    const myPengaduan = JSON.parse(myPengaduanStr);
+                    
+                    if (myPengaduan.length === 0) {
+                        html += '<div class="info warning">⚠️ Array myPengaduan ada tapi kosong</div>';
+                    } else {
+                        html += `<div class="info success">✅ Ditemukan ${myPengaduan.length} pengaduan</div>`;
+                        html += '<pre>' + JSON.stringify(myPengaduan, null, 2) + '</pre>';
+                    }
+                } catch (e) {
+                    html += `<div class="info error">❌ Error parsing JSON: ${e.message}</div>`;
+                }
+            } else {
+                html += '<div class="info warning">⚠️ Key "myPengaduan" tidak ditemukan di localStorage</div>';
+            }
+            
+            html += '</div>';
+
+            // All localStorage keys
+            html += '<div class="card"><h2>🔑 Semua Keys di localStorage</h2>';
+            const allKeys = Object.keys(localStorage);
+            if (allKeys.length === 0) {
+                html += '<div class="info warning">⚠️ localStorage kosong</div>';
+            } else {
+                html += '<div class="info success">✅ Ditemukan ' + allKeys.length + ' keys</div>';
+                html += '<ul style="list-style: none; padding: 0;">';
+                allKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    const size = new Blob([value]).size;
+                    html += `<li style="padding: 8px; background: #f8f9fa; margin: 5px 0; border-radius: 5px;">
+                        <strong>${key}</strong> <span class="badge badge-info">${size} bytes</span>
+                    </li>`;
+                });
+                html += '</ul>';
+            }
+            html += '</div>';
+
+            resultsDiv.innerHTML = html;
+        }
+
+        function clearStorage() {
+            if (confirm('⚠️ Apakah Anda yakin ingin menghapus SEMUA data pengaduan?\n\nData yang dihapus tidak dapat dikembalikan!')) {
+                localStorage.removeItem('allPengaduan');
+                localStorage.removeItem('myPengaduan');
+                alert('✅ Data berhasil dihapus!');
+                checkStorage();
+            }
+        }
+
+        function addSampleData() {
+            const sampleCode = `ADU-2024-${String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0')}`;
+            const sampleData = {
+                id: sampleCode,
+                kode_pengaduan: sampleCode,
+                judul_pengaduan: 'Sample Pengaduan - Upah Tidak Dibayar',
+                isi_pengaduan: 'Ini adalah data sample untuk testing. Perusahaan tidak membayar upah sesuai UMR.',
+                kategori: 'Pengupahan',
+                status: 'masuk',
+                lokasi_kejadian: 'Jakarta Selatan',
+                tanggal_kejadian: '2024-11-01',
+                file_bukti: null,
+                created_at: new Date().toISOString(),
+                user: {
+                    nama_lengkap: 'John Doe (Sample)',
+                    email: 'sample@example.com',
+                    anonim: false
+                },
+                no_telepon: '08123456789',
+                timeline: [
+                    {
+                        status: 'masuk',
+                        keterangan: 'Pengaduan telah diterima sistem',
+                        created_at: new Date().toISOString()
+                    }
+                ]
+            };
+
+            // Add to allPengaduan
+            const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}');
+            allPengaduan[sampleCode] = sampleData;
+            localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan));
+
+            // Add to myPengaduan
+            const myPengaduan = JSON.parse(localStorage.getItem('myPengaduan') || '[]');
+            myPengaduan.push({
+                kode: sampleCode,
+                judul: sampleData.judul_pengaduan,
+                tanggal: sampleData.created_at
+            });
+            localStorage.setItem('myPengaduan', JSON.stringify(myPengaduan));
+
+            alert(`✅ Data sample berhasil ditambahkan!\nKode: ${sampleCode}`);
+            checkStorage();
+        }
+
+        // Auto load on page load
+        window.onload = checkStorage;
+    </script>
+</body>
+</html>

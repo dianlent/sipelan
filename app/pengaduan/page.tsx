@@ -161,23 +161,46 @@ export default function PengaduanPage() {
         ]
       }
       
-      // Save complete data to localStorage
-      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
-      allPengaduan[generatedCode] = pengaduanData
-      localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
+      // Save complete data to localStorage with validation
+      console.log('=== SAVING PENGADUAN ===')
+      console.log('Generated Code:', generatedCode)
+      console.log('Pengaduan Data:', pengaduanData)
       
-      // Also save to user's list
-      const savedCodes = JSON.parse(localStorage.getItem('myPengaduan') || '[]')
-      savedCodes.push({
-        kode: generatedCode,
-        judul: formData.judul_pengaduan,
-        tanggal: new Date().toISOString()
-      })
-      localStorage.setItem('myPengaduan', JSON.stringify(savedCodes))
+      try {
+        // Save to allPengaduan
+        const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+        allPengaduan[generatedCode] = pengaduanData
+        localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
+        console.log('✅ Saved to allPengaduan. Total:', Object.keys(allPengaduan).length)
+        
+        // Also save to user's list
+        const savedCodes = JSON.parse(localStorage.getItem('myPengaduan') || '[]')
+        savedCodes.push({
+          kode: generatedCode,
+          judul: formData.judul_pengaduan,
+          tanggal: new Date().toISOString()
+        })
+        localStorage.setItem('myPengaduan', JSON.stringify(savedCodes))
+        console.log('✅ Saved to myPengaduan. Total:', savedCodes.length)
+        
+        // Verify data was saved
+        const verification = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+        if (verification[generatedCode]) {
+          console.log('✅ Verification SUCCESS: Data tersimpan dengan benar')
+        } else {
+          console.error('❌ Verification FAILED: Data tidak tersimpan')
+          throw new Error('Data gagal tersimpan ke localStorage')
+        }
+        
+        console.log('=== END SAVING ===')
+      } catch (saveError) {
+        console.error('❌ Error saving to localStorage:', saveError)
+        throw saveError
+      }
       
       setKodeTracking(generatedCode)
       setShowSuccessModal(true)
-      toast.success('Pengaduan berhasil diajukan!')
+      toast.success('Pengaduan berhasil diajukan dan tersimpan!')
     } catch (error) {
       toast.error('Gagal mengajukan pengaduan')
       console.error('Submit error:', error)

@@ -102,37 +102,63 @@ export default function TrackingPage() {
         }
         
         if (response.status === 404) {
+          console.log('❌ API returned 404, checking localStorage...')
           // Check localStorage before showing error
-          const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
-          const localData = allPengaduan[kodeTracking.toUpperCase()]
+          const allPengaduanLocal = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+          const localDataFound = allPengaduanLocal[kodeTracking.toUpperCase()]
           
-          if (localData) {
-            setPengaduan(localData)
+          if (localDataFound) {
+            console.log('✅ Found in localStorage after API 404')
+            setPengaduan(localDataFound)
             toast.success('Pengaduan ditemukan!')
             return
           }
           
+          console.log('❌ Not found in localStorage either')
           toast.error('Pengaduan tidak ditemukan')
           setPengaduan(null)
           return
         }
       } catch (apiError) {
+        console.log('⚠️ API not available, using localStorage only')
         // API not available, silently fall through to localStorage
       }
       
       // Check localStorage first
+      console.log('=== TRACKING SEARCH ===')
+      console.log('Searching for:', kodeTracking.toUpperCase())
+      
       try {
-        const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+        const allPengaduanStr = localStorage.getItem('allPengaduan')
+        console.log('localStorage data:', allPengaduanStr)
+        
+        if (!allPengaduanStr || allPengaduanStr === '{}') {
+          console.log('⚠️ localStorage kosong')
+          toast.error('Belum ada pengaduan tersimpan')
+          setPengaduan(null)
+          return
+        }
+        
+        const allPengaduan = JSON.parse(allPengaduanStr)
+        console.log('All pengaduan keys:', Object.keys(allPengaduan))
+        
         const localData = allPengaduan[kodeTracking.toUpperCase()]
+        console.log('Found data:', localData)
         
         if (localData) {
+          console.log('✅ Pengaduan found in localStorage')
+          console.log('Timeline:', localData.timeline)
           setPengaduan(localData)
           toast.success('Pengaduan ditemukan!')
           return
+        } else {
+          console.log('❌ Pengaduan not found')
         }
       } catch (localError) {
-        console.error('localStorage error:', localError)
+        console.error('❌ localStorage error:', localError)
       }
+      
+      console.log('=== END TRACKING ===')
       
       // If not found in localStorage, use default mock data
       const mockData: PengaduanDetail = {

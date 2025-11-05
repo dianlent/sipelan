@@ -56,8 +56,9 @@ export default function AdminPage() {
   const [newStatus, setNewStatus] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
-  // Computed stats - dinamis berdasarkan pengaduanList
+  // Computed stats - dinamis berdasarkan pengaduanList dari database
   const stats = {
     total: pengaduanList.length,
     perluDisposisi: pengaduanList.filter(p => 
@@ -72,6 +73,19 @@ export default function AdminPage() {
     ).length,
     selesai: pengaduanList.filter(p => p.status === 'selesai').length
   }
+
+  // Auto refresh every 30 seconds
+  useEffect(() => {
+    if (!user) return
+    
+    const interval = setInterval(() => {
+      console.log('🔄 Auto-refresh data...')
+      loadPengaduan()
+      setLastRefresh(new Date())
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [user])
 
   const bidangList = [
     { id: 1, nama: 'Bidang Hubungan Industrial', kode: 'HI' },
@@ -97,33 +111,69 @@ export default function AdminPage() {
 
     if (user) {
       loadPengaduan()
+      setLastRefresh(new Date())
     }
   }, [user, authLoading, isAuthenticated, router])
+
+  const handleRefresh = () => {
+    console.log('🔄 Manual refresh triggered')
+    loadPengaduan()
+    setLastRefresh(new Date())
+    toast.success('Data berhasil direfresh', { icon: '🔄' })
+  }
 
   const loadPengaduan = async () => {
     try {
       // Load all pengaduan from localStorage (Admin sees ALL)
-      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+      const allPengaduanStr = localStorage.getItem('allPengaduan')
+      console.log('=== ADMIN LOAD DEBUG ===')
+      console.log('Raw localStorage data:', allPengaduanStr)
+      
+      if (!allPengaduanStr || allPengaduanStr === '{}') {
+        console.log('⚠️ localStorage kosong atau tidak ada data')
+        setPengaduanList([])
+        toast('Belum ada pengaduan. Silakan buat pengaduan baru atau gunakan tool debug untuk menambah data sample.', {
+          icon: 'ℹ️',
+          duration: 5000
+        })
+        return
+      }
+      
+      const allPengaduan = JSON.parse(allPengaduanStr)
+      console.log('Parsed data:', allPengaduan)
+      console.log('Total keys:', Object.keys(allPengaduan).length)
       
       // Convert object to array
-      const pengaduanArray: Pengaduan[] = Object.values(allPengaduan).map((p: any) => ({
-        id: p.id,
-        kode_pengaduan: p.kode_pengaduan,
-        judul_pengaduan: p.judul_pengaduan,
-        kategori: p.kategori,
-        status: p.status,
-        nama_pelapor: p.user?.nama_lengkap || 'Anonim',
-        created_at: p.created_at,
-        bidang: p.bidang?.nama_bidang || null
-      }))
+      const pengaduanArray: Pengaduan[] = Object.values(allPengaduan).map((p: any) => {
+        console.log('Processing:', p.kode_pengaduan, p)
+        return {
+          id: p.id,
+          kode_pengaduan: p.kode_pengaduan,
+          judul_pengaduan: p.judul_pengaduan,
+          kategori: p.kategori,
+          status: p.status,
+          nama_pelapor: p.user?.nama_lengkap || 'Anonim',
+          created_at: p.created_at,
+          bidang: p.bidang?.nama_bidang || null
+        }
+      })
+      
+      console.log('Converted array:', pengaduanArray)
       
       // Sort by date (newest first)
       pengaduanArray.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       
       setPengaduanList(pengaduanArray)
+      console.log('✅ Data loaded successfully:', pengaduanArray.length, 'pengaduan')
+      console.log('=== END DEBUG ===')
+      
+      if (pengaduanArray.length > 0) {
+        toast.success(`${pengaduanArray.length} pengaduan berhasil dimuat`)
+      }
     } catch (error) {
-      toast.error('Gagal memuat data pengaduan')
-      console.error('Load error:', error)
+      console.error('❌ Load error:', error)
+      toast.error('Gagal memuat data pengaduan: ' + (error as Error).message)
+      setPengaduanList([])
     }
   }
 
@@ -135,14 +185,46 @@ export default function AdminPage() {
 
     setIsLoading(true)
     try {
-      // TODO: Send to API
-      // const response = await fetch(`/api/pengaduan/${selectedPengaduan.id}/status`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ status: newStatus })
-      // })
+      console.log('=== UPDATE STATUS ===')
+      console.log('Pengaduan ID:', selectedPengaduan.id)
+      console.log('New Status:', newStatus)
 
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Update localStorage
+      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+      const pengaduanData = allPengaduan[selectedPengaduan.kode_pengaduan]
+      
+      if (pengaduanData) {
+        // Update status
+        pengaduanData.status = newStatus
+        
+        // Add to timeline
+        const statusKeterangan: Record<string, string> = {
+          'masuk': 'Pengaduan telah diterima sistem',
+          'terverifikasi': 'Pengaduan telah diverifikasi oleh admin dan dinyatakan valid',
+          'terdisposisi': 'Pengaduan telah didisposisikan ke bidang terkait',
+          'tindak_lanjut': 'Pengaduan sedang ditindaklanjuti oleh bidang terkait',
+          'selesai': 'Pengaduan telah selesai ditindaklanjuti'
+        }
+        
+        if (!pengaduanData.timeline) {
+          pengaduanData.timeline = []
+        }
+        
+        pengaduanData.timeline.push({
+          status: newStatus,
+          keterangan: statusKeterangan[newStatus] || `Status diubah menjadi ${newStatus}`,
+          created_at: new Date().toISOString()
+        })
+        
+        // Save back to localStorage
+        allPengaduan[selectedPengaduan.kode_pengaduan] = pengaduanData
+        localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
+        
+        console.log('✅ Status updated in localStorage')
+        console.log('Timeline:', pengaduanData.timeline)
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Update local state
       setPengaduanList(prev =>
@@ -156,33 +238,72 @@ export default function AdminPage() {
       toast.success('Status berhasil diupdate')
       setShowStatusModal(false)
       setNewStatus('')
+      console.log('=== END UPDATE ===')
     } catch (error) {
+      console.error('❌ Update status error:', error)
       toast.error('Gagal mengupdate status')
-      console.error('Update status error:', error)
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleDisposisi = async () => {
-    if (!disposisiBidang || !keterangan) {
+    if (!disposisiBidang || !keterangan || !selectedPengaduan) {
       toast.error('Pilih bidang dan isi keterangan')
       return
     }
 
     setIsLoading(true)
     try {
-      // TODO: Send to API
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      console.log('=== DISPOSISI PENGADUAN ===')
+      console.log('Pengaduan:', selectedPengaduan.kode_pengaduan)
+      console.log('Bidang:', disposisiBidang)
+      console.log('Keterangan:', keterangan)
 
-      toast.success('Pengaduan berhasil didisposisikan')
+      // Update localStorage
+      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+      const pengaduanData = allPengaduan[selectedPengaduan.kode_pengaduan]
+      
+      if (pengaduanData) {
+        // Update status to terdisposisi
+        pengaduanData.status = 'terdisposisi'
+        
+        // Add bidang info
+        pengaduanData.bidang = {
+          id: disposisiBidang,
+          nama_bidang: disposisiBidang
+        }
+        
+        // Add to timeline
+        if (!pengaduanData.timeline) {
+          pengaduanData.timeline = []
+        }
+        
+        pengaduanData.timeline.push({
+          status: 'terdisposisi',
+          keterangan: `Pengaduan didisposisikan ke ${disposisiBidang}. ${keterangan}`,
+          created_at: new Date().toISOString()
+        })
+        
+        // Save back to localStorage
+        allPengaduan[selectedPengaduan.kode_pengaduan] = pengaduanData
+        localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
+        
+        console.log('✅ Disposisi saved to localStorage')
+        console.log('Updated data:', pengaduanData)
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      toast.success(`Pengaduan berhasil didisposisikan ke ${disposisiBidang}`)
       setShowDisposisiModal(false)
       setDisposisiBidang('')
       setKeterangan('')
       loadPengaduan()
+      console.log('=== END DISPOSISI ===')
     } catch (error) {
+      console.error('❌ Disposisi error:', error)
       toast.error('Gagal mendisposisikan pengaduan')
-      console.error('Disposisi error:', error)
     } finally {
       setIsLoading(false)
     }
@@ -247,6 +368,52 @@ export default function AdminPage() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  const addSampleData = () => {
+    const sampleCode = `ADU-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0')}`
+    const sampleData = {
+      id: sampleCode,
+      kode_pengaduan: sampleCode,
+      judul_pengaduan: 'Sample Pengaduan - Upah Tidak Dibayar Sesuai UMR',
+      isi_pengaduan: 'Ini adalah data sample untuk testing. Perusahaan tempat saya bekerja tidak membayar upah sesuai UMR yang ditetapkan pemerintah. Sudah beberapa kali komplain namun tidak ada tanggapan.',
+      kategori: 'Pengupahan',
+      status: 'masuk',
+      lokasi_kejadian: 'PT ABC Indonesia, Jakarta Selatan',
+      tanggal_kejadian: '2024-11-01',
+      file_bukti: null,
+      created_at: new Date().toISOString(),
+      user: {
+        nama_lengkap: 'John Doe (Sample)',
+        email: 'sample@example.com',
+        anonim: false
+      },
+      no_telepon: '08123456789',
+      timeline: [
+        {
+          status: 'masuk',
+          keterangan: 'Pengaduan telah diterima sistem dan menunggu verifikasi',
+          created_at: new Date().toISOString()
+        }
+      ]
+    }
+
+    // Add to allPengaduan
+    const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+    allPengaduan[sampleCode] = sampleData
+    localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
+
+    // Add to myPengaduan
+    const myPengaduan = JSON.parse(localStorage.getItem('myPengaduan') || '[]')
+    myPengaduan.push({
+      kode: sampleCode,
+      judul: sampleData.judul_pengaduan,
+      tanggal: sampleData.created_at
+    })
+    localStorage.setItem('myPengaduan', JSON.stringify(myPengaduan))
+
+    toast.success(`Data sample berhasil ditambahkan! Kode: ${sampleCode}`)
+    loadPengaduan()
   }
 
   if (!user) {
@@ -552,9 +719,15 @@ export default function AdminPage() {
             <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl"></div>
             <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-400 rounded-full blur-3xl"></div>
           </div>
-          <div className="relative z-10">
-            <h2 className="text-3xl font-bold mb-2">Selamat Datang, {user.nama_lengkap}! 👋</h2>
-            <p className="text-white/90 text-lg">Kelola dan disposisikan pengaduan dengan mudah dan efisien</p>
+          <div className="relative z-10 flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Selamat Datang, {user.nama_lengkap}! 👋</h2>
+              <p className="text-white/90 text-lg">Kelola dan disposisikan pengaduan dengan mudah dan efisien</p>
+            </div>
+            <div className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl border border-white/30">
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+              <span className="text-sm font-semibold">Data Real-time dari Database</span>
+            </div>
           </div>
         </motion.div>
 
@@ -672,15 +845,49 @@ export default function AdminPage() {
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Daftar Pengaduan</h2>
               <p className="text-gray-600">Kelola dan disposisikan pengaduan ke bidang terkait</p>
             </div>
-            <motion.div 
-              key={stats.total}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100"
-            >
-              <FileText className="w-5 h-5 text-purple-600" />
-              <span className="font-bold text-purple-600">{stats.total} Pengaduan</span>
-            </motion.div>
+            <div className="flex items-center space-x-3">
+              {/* Refresh Button */}
+              <button
+                onClick={handleRefresh}
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:shadow-lg transition-all font-semibold hover:scale-105"
+                title="Refresh data dari database"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Refresh</span>
+              </button>
+              
+              {/* Last Refresh Indicator */}
+              <div className="flex items-center space-x-2 px-3 py-2 bg-blue-50 rounded-xl border border-blue-200 text-xs text-blue-700">
+                <Clock className="w-3.5 h-3.5" />
+                <span>
+                  {lastRefresh.toLocaleTimeString('id-ID', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    second: '2-digit'
+                  })}
+                </span>
+              </div>
+              
+              {stats.total === 0 && (
+                <button
+                  onClick={addSampleData}
+                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl hover:shadow-lg transition-all font-semibold"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>Tambah Data Sample</span>
+                </button>
+              )}
+              
+              <motion.div 
+                key={stats.total}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100"
+              >
+                <FileText className="w-5 h-5 text-purple-600" />
+                <span className="font-bold text-purple-600">{stats.total} Pengaduan</span>
+              </motion.div>
+            </div>
           </div>
           
           <div className="space-y-4">

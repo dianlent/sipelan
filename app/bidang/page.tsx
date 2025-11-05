@@ -113,17 +113,44 @@ export default function BidangPage() {
 
     setIsLoading(true)
     try {
-      // TODO: Send to API
-      // const response = await fetch(`/api/pengaduan/${selectedPengaduan.id}/status`, {
-      //   method: 'PUT',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ 
-      //     status: statusUpdate,
-      //     kode_bidang: user?.kode_bidang 
-      //   })
-      // })
+      console.log('=== BIDANG UPDATE STATUS ===')
+      console.log('Pengaduan:', selectedPengaduan.kode_pengaduan)
+      console.log('New Status:', statusUpdate)
 
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Update localStorage
+      const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+      const pengaduanData = allPengaduan[selectedPengaduan.kode_pengaduan]
+      
+      if (pengaduanData) {
+        // Update status
+        pengaduanData.status = statusUpdate
+        
+        // Add to timeline
+        const statusKeterangan: Record<string, string> = {
+          'tindak_lanjut': 'Pengaduan sedang ditindaklanjuti oleh bidang terkait',
+          'selesai': 'Pengaduan telah selesai ditindaklanjuti. Terima kasih atas laporan Anda.'
+        }
+        
+        if (!pengaduanData.timeline) {
+          pengaduanData.timeline = []
+        }
+        
+        pengaduanData.timeline.push({
+          status: statusUpdate,
+          keterangan: statusKeterangan[statusUpdate] || `Status diubah menjadi ${statusUpdate}`,
+          created_at: new Date().toISOString(),
+          petugas: user?.nama_lengkap || 'Bidang'
+        })
+        
+        // Save back to localStorage
+        allPengaduan[selectedPengaduan.kode_pengaduan] = pengaduanData
+        localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
+        
+        console.log('✅ Status updated in localStorage')
+        console.log('Timeline:', pengaduanData.timeline)
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 500))
 
       // Update local state
       setPengaduanList(prev => 
@@ -146,9 +173,10 @@ export default function BidangPage() {
 
       setShowDetailModal(false)
       setStatusUpdate('')
+      console.log('=== END UPDATE ===')
     } catch (error) {
+      console.error('❌ Update error:', error)
       toast.error('Gagal mengupdate status')
-      console.error('Update error:', error)
     } finally {
       setIsLoading(false)
     }

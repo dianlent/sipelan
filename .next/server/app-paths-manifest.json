@@ -1,5 +1,7 @@
 {
-  "/page": "app/page.js",
-  "/kebijakan-privasi/page": "app/kebijakan-privasi/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/login/page": "app/login/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/tracking/page": "app/tracking/page.js",
   "/pengaduan/page": "app/pengaduan/page.js"
 }

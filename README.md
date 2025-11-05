@@ -321,10 +321,10 @@ Proyek ini dilisensikan di bawah [MIT License](LICENSE).
 
 ## 👨‍💻 Author
 
-**Dinas Ketenagakerjaan**
+**Dinas Tenaga Kerja Kabupaten Pati**
 
-- Website: [disnaker.go.id](https://disnaker.go.id)
-- Email: info@disnaker.go.id
+- Website: [disnaker.patikab.go.id](https://disnaker.patikab.go.id)
+- Email: info@disnaker.patikab.go.id
 - GitHub: [@dianlent](https://github.com/dianlent)
 
 ## 🙏 Acknowledgments
@@ -342,5 +342,5 @@ Proyek ini dilisensikan di bawah [MIT License](LICENSE).
 </div>
 
 <div align="center">
-  <sub>© 2024 Dinas Ketenagakerjaan. All rights reserved.</sub>
+  <sub>© 2025 Dian Lentera Buana | Dinas Tenaga Kerja Kabupaten Pati. All rights reserved.</sub>
 </div>
