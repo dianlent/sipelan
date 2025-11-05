@@ -263,13 +263,25 @@ export default function AdminPage() {
     try {
       console.log('=== DISPOSISI PENGADUAN ===')
       console.log('Pengaduan:', selectedPengaduan.kode_pengaduan)
-      console.log('Bidang:', disposisiBidang)
+      console.log('Bidang ID:', disposisiBidang)
       console.log('Keterangan:', keterangan)
 
-      // Assign pengaduan to bidang using storage utility
+      // Find bidang name from ID
+      const selectedBidang = bidangList.find(b => b.id.toString() === disposisiBidang)
+      if (!selectedBidang) {
+        throw new Error('Bidang tidak ditemukan')
+      }
+
+      const bidangNama = selectedBidang.nama
+      const bidangKode = selectedBidang.kode
+      
+      console.log('Bidang Nama:', bidangNama)
+      console.log('Bidang Kode:', bidangKode)
+
+      // Assign pengaduan to bidang using NAMA BIDANG (for consistency)
       const success = assignPengaduanToBidang(
         selectedPengaduan.kode_pengaduan,
-        disposisiBidang,
+        bidangNama,  // Use nama instead of ID
         keterangan,
         user?.nama_lengkap || 'Admin'
       )
@@ -281,7 +293,7 @@ export default function AdminPage() {
       console.log('✅ Disposisi saved successfully')
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      toast.success(`Pengaduan berhasil didisposisikan ke ${disposisiBidang}`)
+      toast.success(`Pengaduan berhasil didisposisikan ke ${bidangNama}`)
       setShowDisposisiModal(false)
       setDisposisiBidang('')
       setKeterangan('')
