@@ -143,10 +143,24 @@ export default function BidangPage() {
       // Sort by date (newest first)
       bidangPengaduan.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       
+      console.log('✅ Total pengaduan ditemukan:', bidangPengaduan.length)
+      console.log('Pengaduan list:', bidangPengaduan)
+      
       setPengaduanList(bidangPengaduan)
+      
+      if (bidangPengaduan.length === 0) {
+        console.log('⚠️ No pengaduan found for this bidang. Check:')
+        console.log('1. Is there any pengaduan with bidang field?')
+        console.log('2. Does the bidang value match:', bidangName)
+        console.log('3. Check allPengaduan:', Object.values(allPengaduan).map((p: any) => ({
+          kode: p.kode_pengaduan,
+          bidang: p.bidang,
+          status: p.status
+        })))
+      }
     } catch (error) {
       toast.error('Gagal memuat data pengaduan')
-      console.error('Load error:', error)
+      console.error('❌ Load error:', error)
     }
   }
 
@@ -615,7 +629,7 @@ export default function BidangPage() {
           </motion.div>
         </div>
 
-        {/* Filter */}
+        {/* Filter & Debug */}
         <div className="bg-white rounded-2xl p-6 shadow-lg mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center space-x-2">
@@ -623,7 +637,7 @@ export default function BidangPage() {
               <span className="font-semibold text-gray-700">Filter Status:</span>
             </div>
             <div className="flex flex-wrap gap-2">
-              {['all', 'di proses', 'selesai'].map((status) => (
+              {['all', 'terdisposisi', 'diproses', 'tindak_lanjut', 'selesai'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setFilterStatus(status)}
@@ -633,11 +647,32 @@ export default function BidangPage() {
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {status === 'all' ? 'Semua' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  {status === 'all' ? 'Semua' : status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')}
                 </button>
               ))}
             </div>
           </div>
+          
+          {/* Debug Button (Development) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  console.log('=== DEBUG INFO ===')
+                  console.log('User:', user)
+                  console.log('Kode Bidang:', user?.kode_bidang)
+                  console.log('Pengaduan List:', pengaduanList)
+                  console.log('Filter Status:', filterStatus)
+                  const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
+                  console.log('All Pengaduan:', allPengaduan)
+                  console.log('Pengaduan dengan bidang:', Object.values(allPengaduan).filter((p: any) => p.bidang))
+                }}
+                className="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600"
+              >
+                🐛 Debug Console
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Pengaduan List */}
