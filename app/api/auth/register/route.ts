@@ -76,14 +76,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate JWT token
+    const jwtSecret = process.env.JWT_SECRET || 'default-secret-key-change-in-production'
     const token = jwt.sign(
       { 
         userId: newUser.id,
         email: newUser.email,
         role: newUser.role
       },
-      process.env.JWT_SECRET!,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      jwtSecret,
+      { expiresIn: '7d' }
     )
 
     // Remove password from response

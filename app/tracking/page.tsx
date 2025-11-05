@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -58,7 +58,7 @@ interface PengaduanDetail {
   }>
 }
 
-export default function TrackingPage() {
+function TrackingContent() {
   const searchParams = useSearchParams()
   const { user, isAuthenticated } = useAuth()
   const [kodeTracking, setKodeTracking] = useState(searchParams.get('kode') || '')
@@ -661,5 +661,20 @@ export default function TrackingPage() {
         </div>
       </footer>
     </div>
+  )
+}
+
+export default function TrackingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Memuat halaman tracking...</p>
+        </div>
+      </div>
+    }>
+      <TrackingContent />
+    </Suspense>
   )
 }
