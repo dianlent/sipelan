@@ -88,11 +88,11 @@ export default function AdminPage() {
   }, [user])
 
   const bidangList = [
-    { id: 1, nama: 'Bidang Hubungan Industrial', kode: 'HI' },
-    { id: 2, nama: 'Bidang Latihan Kerja dan Produktivitas', kode: 'LATTAS' },
-    { id: 3, nama: 'Bidang PTPK', kode: 'PTPK' },
-    { id: 4, nama: 'UPTD BLK Pati', kode: 'BLK' },
-    { id: 5, nama: 'Sekretariat', kode: 'SEKRETARIAT' }
+    { bidang_id: 1, nama: 'Bidang Hubungan Industrial', kode: 'HI' },
+    { bidang_id: 2, nama: 'Bidang Latihan Kerja dan Produktivitas', kode: 'LATTAS' },
+    { bidang_id: 3, nama: 'Bidang PTPK', kode: 'PTPK' },
+    { bidang_id: 4, nama: 'Bidang BLK', kode: 'BLK' },
+    { bidang_id: 5, nama: 'Bidang Sekretariat', kode: 'SEKRETARIAT' }
   ]
 
   useEffect(() => {
@@ -175,7 +175,11 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error('❌ Load error:', error)
-      toast.error('Gagal memuat data pengaduan: ' + (error as Error).message)
+      console.error('Error type:', typeof error)
+      console.error('Error message:', (error as Error)?.message)
+      
+      const errorMessage = (error as Error)?.message || 'Unknown error'
+      toast.error('Gagal memuat data pengaduan: ' + errorMessage)
       setPengaduanList([])
     }
   }
@@ -282,7 +286,7 @@ export default function AdminPage() {
       console.log('Keterangan:', keterangan)
 
       // Find bidang name from ID
-      const selectedBidang = bidangList.find(b => b.id.toString() === disposisiBidang)
+      const selectedBidang = bidangList.find(b => b.bidang_id.toString() === disposisiBidang)
       if (!selectedBidang) {
         throw new Error('Bidang tidak ditemukan')
       }
@@ -574,7 +578,7 @@ export default function AdminPage() {
                 >
                   <option value="">Pilih Bidang</option>
                   {bidangList.map((bidang) => (
-                    <option key={bidang.id} value={bidang.id}>
+                    <option key={bidang.bidang_id} value={bidang.bidang_id}>
                       {bidang.nama} ({bidang.kode})
                     </option>
                   ))}

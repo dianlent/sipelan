@@ -18,10 +18,12 @@ import {
   Search,
   Calendar,
   User,
-  Home
+  Home,
+  User as UserIcon
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
+import Footer from '@/components/Footer'
 
 interface Pengaduan {
   id: string
@@ -49,6 +51,7 @@ export default function BidangPage() {
   const [statusUpdate, setStatusUpdate] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [filterStatus, setFilterStatus] = useState('all')
+  const [showUserMenu, setShowUserMenu] = useState(false)
 
   useEffect(() => {
     // Wait for auth to finish loading
@@ -73,10 +76,20 @@ export default function BidangPage() {
       return
     }
 
+    // Debug user data
+    console.log('=== USER DATA ===')
+    console.log('User object:', user)
+    console.log('Role:', user?.role)
+    console.log('Bidang ID:', user?.bidang_id)
+    console.log('Kode Bidang:', user?.kode_bidang)
+
     // Load data if authenticated and authorized
     if (user && user.bidang_id) {
-      console.log('✅ Authenticated as bidang, loading data')
+      console.log('✅ Authenticated as bidang, loading data for bidang_id:', user.bidang_id)
       loadPengaduan(user.bidang_id)
+    } else if (user) {
+      console.error('⚠️ User bidang tidak punya bidang_id!')
+      toast.error('User bidang tidak memiliki bidang_id. Hubungi administrator.')
     }
   }, [user, authLoading, isAuthenticated, router])
 
@@ -84,12 +97,18 @@ export default function BidangPage() {
     try {
       console.log('=== LOADING BIDANG PENGADUAN FROM DATABASE ===')
       console.log('Bidang ID:', bidangId)
+      console.log('User:', user)
       
       // Fetch pengaduan from API filtered by bidang_id
-      const response = await fetch(`/api/pengaduan?bidang_id=${bidangId}&limit=100`)
+      const apiUrl = `/api/pengaduan?bidang_id=${bidangId}&limit=100`
+      console.log('Fetching:', apiUrl)
+      
+      const response = await fetch(apiUrl)
       const result = await response.json()
       
       console.log('API Response:', result)
+      console.log('Response OK?', response.ok)
+      console.log('Success?', result.success)
       
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Gagal memuat data')
@@ -97,6 +116,7 @@ export default function BidangPage() {
       
       const pengaduanData = result.data || []
       console.log('Total pengaduan from DB:', pengaduanData.length)
+      console.log('Pengaduan data:', pengaduanData)
       
       // Convert to display format
       const bidangPengaduan: Pengaduan[] = pengaduanData.map((p: any) => ({
@@ -125,8 +145,13 @@ export default function BidangPage() {
         toast.success(`${bidangPengaduan.length} pengaduan berhasil dimuat`)
       }
     } catch (error) {
-      toast.error('Gagal memuat data pengaduan: ' + (error as Error).message)
       console.error('❌ Load error:', error)
+      console.error('Error type:', typeof error)
+      console.error('Error message:', (error as Error)?.message)
+      console.error('Full error:', JSON.stringify(error, null, 2))
+      
+      const errorMessage = (error as Error)?.message || 'Unknown error'
+      toast.error('Gagal memuat data pengaduan: ' + errorMessage)
       setPengaduanList([])
     }
   }
@@ -247,21 +272,35 @@ export default function BidangPage() {
 
   const getStatusBadge = (status: string) => {
     const badges = {
+      'masuk': 'bg-blue-100 text-blue-700',
+      'terverifikasi': 'bg-green-100 text-green-700',
+      'terdisposisi': 'bg-purple-100 text-purple-700',
+      'tindak_lanjut': 'bg-orange-100 text-orange-700',
+      'selesai': 'bg-emerald-100 text-emerald-700',
+      // Legacy support
       'diterima': 'bg-green-100 text-green-700',
-      'di proses': 'bg-yellow-100 text-yellow-700',
-      'selesai': 'bg-blue-100 text-blue-700'
+      'di proses': 'bg-yellow-100 text-yellow-700'
     }
     return badges[status as keyof typeof badges] || 'bg-gray-100 text-gray-700'
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
+      case 'masuk':
+        return <FileText className="w-4 h-4" />
+      case 'terverifikasi':
+        return <CheckCircle className="w-4 h-4" />
+      case 'terdisposisi':
+        return <Send className="w-4 h-4" />
+      case 'tindak_lanjut':
+        return <Clock className="w-4 h-4" />
+      case 'selesai':
+        return <CheckCircle className="w-4 h-4" />
+      // Legacy support
       case 'diterima':
         return <AlertCircle className="w-4 h-4" />
       case 'di proses':
         return <Clock className="w-4 h-4" />
-      case 'selesai':
-        return <CheckCircle className="w-4 h-4" />
       default:
         return <FileText className="w-4 h-4" />
     }
@@ -475,152 +514,144 @@ export default function BidangPage() {
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className="hidden md:block text-right">
-                <p className="text-sm font-semibold text-gray-900">{user.nama_lengkap}</p>
-                <p className="text-xs text-primary-600 font-medium">Bidang {user.kode_bidang}</p>
+              {/* User Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center space-x-3 px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl hover:shadow-lg transition-all"
+                >
+                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                    <UserIcon className="w-5 h-5" />
+                  </div>
+                  <div className="hidden md:block text-left">
+                    <p className="text-sm font-semibold">{user.nama_lengkap}</p>
+                    <p className="text-xs text-purple-100">{user.kode_bidang}</p>
+                  </div>
+                  <svg 
+                    className={`w-4 h-4 transition-transform ${showUserMenu ? 'rotate-180' : ''}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Dropdown Menu */}
+                {showUserMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50"
+                  >
+                    {/* User Info */}
+                    <div className="p-4 bg-gradient-to-r from-purple-500 to-blue-500 text-white">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                          <UserIcon className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <p className="font-bold">{user.nama_lengkap}</p>
+                          <p className="text-xs text-purple-100">{user.email}</p>
+                          <p className="text-xs text-purple-100 mt-1">Bidang {user.kode_bidang}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="p-2">
+                      <Link
+                        href="/profile"
+                        className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-purple-50 text-gray-700 hover:text-purple-600 transition-all"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <UserIcon className="w-5 h-5" />
+                        <span className="font-medium">Profil Saya</span>
+                      </Link>
+
+                      <Link
+                        href="/"
+                        className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-blue-50 text-gray-700 hover:text-blue-600 transition-all"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <Home className="w-5 h-5" />
+                        <span className="font-medium">Beranda</span>
+                      </Link>
+                      
+                      <Link
+                        href="/tracking"
+                        className="flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-purple-50 text-gray-700 hover:text-purple-600 transition-all"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <Search className="w-5 h-5" />
+                        <span className="font-medium">Lacak Pengaduan</span>
+                      </Link>
+
+                      <div className="my-2 border-t border-gray-100"></div>
+
+                      <button
+                        onClick={() => {
+                          logout()
+                          toast.success('Logout berhasil')
+                          setShowUserMenu(false)
+                        }}
+                        className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-red-50 text-red-600 transition-all"
+                      >
+                        <LogOut className="w-5 h-5" />
+                        <span className="font-medium">Keluar</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
               </div>
-              <Link
-                href="/"
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors"
-              >
-                <Home className="w-4 h-4" />
-                <span className="hidden md:inline">Home</span>
-              </Link>
-              <button
-                onClick={() => {
-                  logout()
-                  toast.success('Logout berhasil')
-                }}
-                className="flex items-center space-x-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                <span className="hidden md:inline">Logout</span>
-              </button>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8">
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl p-6 shadow-lg"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                <Clock className="w-6 h-6 text-yellow-600" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900">
-              {pengaduanList.filter(p => p.status === 'di proses').length}
-            </h3>
-            <p className="text-sm text-gray-600">Sedang Diproses</p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl p-6 shadow-lg"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900">
-              {pengaduanList.filter(p => p.status === 'selesai').length}
-            </h3>
-            <p className="text-sm text-gray-600">Selesai</p>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl p-6 shadow-lg"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <FileText className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900">{pengaduanList.length}</h3>
-            <p className="text-sm text-gray-600">Total Pengaduan</p>
-          </motion.div>
+      {/* Main Content - 2 Sidebar Layout */}
+      <div className="flex h-[calc(100vh-80px)]">
+        {/* Left Sidebar - Empty for now */}
+        <div className="w-20 bg-gradient-to-br from-purple-50 to-blue-50 border-r border-gray-200">
+          {/* Minimized sidebar */}
         </div>
 
-        {/* Filter & Debug */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center space-x-2">
-              <Filter className="w-5 h-5 text-gray-400" />
-              <span className="font-semibold text-gray-700">Filter Status:</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {['all', 'terdisposisi', 'diproses', 'tindak_lanjut', 'selesai'].map((status) => (
-                <button
-                  key={status}
-                  onClick={() => setFilterStatus(status)}
-                  className={`px-4 py-2 rounded-xl font-medium transition-all ${
-                    filterStatus === status
-                      ? 'bg-gradient-primary text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {status === 'all' ? 'Semua' : status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Center - Pengaduan List */}
+        <div className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6"
+            >
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Daftar Pengaduan</h2>
+              <p className="text-gray-600">Kelola pengaduan yang masuk ke bidang Anda</p>
+            </motion.div>
           
-          {/* Debug Button (Development) */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <button
-                onClick={() => {
-                  console.log('=== DEBUG INFO ===')
-                  console.log('User:', user)
-                  console.log('Kode Bidang:', user?.kode_bidang)
-                  console.log('Pengaduan List:', pengaduanList)
-                  console.log('Filter Status:', filterStatus)
-                  const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
-                  console.log('All Pengaduan:', allPengaduan)
-                  console.log('Pengaduan dengan bidang:', Object.values(allPengaduan).filter((p: any) => p.bidang))
-                }}
-                className="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600"
-              >
-                🐛 Debug Console
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Pengaduan List */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl shadow-lg p-8"
-        >
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Daftar Pengaduan</h2>
-          
-          {filteredPengaduan.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Tidak ada pengaduan</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredPengaduan.map((pengaduan) => (
-                <div
-                  key={pengaduan.id}
-                  className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-all"
-                >
+            {filteredPengaduan.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
+                <div className="bg-gradient-to-br from-purple-100 to-blue-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
+                  <FileText className="w-12 h-12 text-purple-500" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Belum Ada Pengaduan</h3>
+                <p className="text-gray-500 mb-1">
+                  {filterStatus === 'all' 
+                    ? 'Belum ada pengaduan yang didisposisikan ke bidang Anda.'
+                    : `Tidak ada pengaduan dengan status "${filterStatus}".`
+                  }
+                </p>
+                <p className="text-sm text-gray-400">Pengaduan akan muncul setelah admin melakukan disposisi.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredPengaduan.map((pengaduan, index) => (
+                  <motion.div
+                    key={pengaduan.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-white border-2 border-gray-100 rounded-2xl p-6 hover:shadow-xl hover:border-purple-200 transition-all cursor-pointer"
+                  >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
@@ -648,25 +679,214 @@ export default function BidangPage() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2 ml-4">
-                      <button
-                        onClick={() => {
-                          setSelectedPengaduan(pengaduan)
-                          setShowDetailModal(true)
-                          setStatusUpdate(pengaduan.status)
-                        }}
-                        className="px-4 py-2 bg-gradient-primary text-white rounded-xl hover:shadow-lg transition-all flex items-center space-x-2"
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>Proses</span>
-                      </button>
+                      {pengaduan.status === 'selesai' ? (
+                        <div className="px-4 py-2 bg-green-50 text-green-700 rounded-xl flex items-center space-x-2 border-2 border-green-200">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="font-semibold">Selesai</span>
+                        </div>
+                      ) : pengaduan.status === 'tindak_lanjut' ? (
+                        <button
+                          onClick={() => {
+                            setSelectedPengaduan(pengaduan)
+                            setShowTanggapanModal(true)
+                          }}
+                          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:shadow-lg transition-all flex items-center space-x-2"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          <span>Selesaikan</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setSelectedPengaduan(pengaduan)
+                            setShowDetailModal(true)
+                            setStatusUpdate(pengaduan.status)
+                          }}
+                          className="px-4 py-2 bg-gradient-primary text-white rounded-xl hover:shadow-lg transition-all flex items-center space-x-2"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>Proses</span>
+                        </button>
+                      )}
                     </div>
                   </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Sidebar - Stats, Filter & Info */}
+        <div className="w-80 bg-gradient-to-br from-blue-50 to-purple-50 border-l border-gray-200 overflow-y-auto">
+          <div className="p-6 space-y-6">
+            {/* Stats Cards */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">Statistik</h3>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all cursor-pointer border-l-4 border-yellow-500"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium mb-1">Diproses</p>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      {pengaduanList.filter(p => p.status === 'tindak_lanjut').length}
+                    </h3>
+                  </div>
+                  <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                    <Clock className="w-6 h-6 text-yellow-600" />
+                  </div>
                 </div>
-              ))}
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-all cursor-pointer border-l-4 border-green-500"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium mb-1">Selesai</p>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      {pengaduanList.filter(p => p.status === 'selesai').length}
+                    </h3>
+                  </div>
+                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl p-4 shadow-lg text-white"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-purple-100 font-medium mb-1">Total</p>
+                    <h3 className="text-3xl font-bold">{pengaduanList.length}</h3>
+                  </div>
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                    <FileText className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+              </motion.div>
             </div>
-          )}
-        </motion.div>
+
+            {/* Filter Section */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center">
+                <Filter className="w-4 h-4 mr-2" />
+                Filter
+              </h3>
+              <div className="space-y-2">
+                {[
+                  { value: 'all', label: 'Semua', icon: FileText, color: 'purple' },
+                  { value: 'terdisposisi', label: 'Terdisposisi', icon: Send, color: 'blue' },
+                  { value: 'tindak_lanjut', label: 'Tindak Lanjut', icon: Clock, color: 'yellow' },
+                  { value: 'selesai', label: 'Selesai', icon: CheckCircle, color: 'green' }
+                ].map((filter) => {
+                  const Icon = filter.icon
+                  return (
+                    <button
+                      key={filter.value}
+                      onClick={() => setFilterStatus(filter.value)}
+                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all ${
+                        filterStatus === filter.value
+                          ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg scale-105'
+                          : 'bg-white text-gray-600 hover:bg-gray-50 shadow-sm'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="flex-1 text-left">{filter.label}</span>
+                      <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
+                        filterStatus === filter.value
+                          ? 'bg-white/20'
+                          : 'bg-gray-100'
+                      }`}>
+                        {filter.value === 'all' ? pengaduanList.length : pengaduanList.filter(p => p.status === filter.value).length}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-white rounded-2xl p-6 shadow-lg"
+            >
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                <MessageSquare className="w-5 h-5 mr-2 text-purple-500" />
+                Quick Actions
+              </h3>
+              <div className="space-y-3">
+                <button className="w-full flex items-center space-x-3 px-4 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-xl hover:shadow-lg transition-all">
+                  <FileText className="w-5 h-5" />
+                  <span className="font-medium">Lihat Semua</span>
+                </button>
+                <button className="w-full flex items-center space-x-3 px-4 py-3 bg-white border-2 border-purple-200 text-purple-600 rounded-xl hover:bg-purple-50 transition-all">
+                  <Search className="w-5 h-5" />
+                  <span className="font-medium">Cari Pengaduan</span>
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Status Legend */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-2xl p-6 shadow-lg"
+            >
+              <h3 className="text-lg font-bold text-gray-900 mb-4">Status Legend</h3>
+              <div className="space-y-3">
+                {[
+                  { status: 'terdisposisi', label: 'Terdisposisi', color: 'bg-purple-100 text-purple-700' },
+                  { status: 'tindak_lanjut', label: 'Tindak Lanjut', color: 'bg-orange-100 text-orange-700' },
+                  { status: 'selesai', label: 'Selesai', color: 'bg-emerald-100 text-emerald-700' }
+                ].map((item) => (
+                  <div key={item.status} className="flex items-center space-x-3">
+                    <div className={`px-3 py-1 rounded-lg text-xs font-semibold ${item.color}`}>
+                      {item.label}
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {pengaduanList.filter(p => p.status === item.status).length} item
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Help Card */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl p-6 shadow-lg text-white"
+            >
+              <h3 className="text-lg font-bold mb-2">Butuh Bantuan?</h3>
+              <p className="text-sm text-purple-100 mb-4">
+                Hubungi admin jika ada kendala dalam mengelola pengaduan
+              </p>
+              <button className="w-full bg-white text-purple-600 px-4 py-2 rounded-xl font-semibold hover:bg-purple-50 transition-all">
+                Hubungi Admin
+              </button>
+            </motion.div>
+          </div>
+        </div>
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }

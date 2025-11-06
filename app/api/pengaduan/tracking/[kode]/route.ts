@@ -26,7 +26,7 @@ export async function GET(
           deskripsi
         ),
         bidang (
-          id,
+          bidang_id,
           nama_bidang,
           kode_bidang
         ),

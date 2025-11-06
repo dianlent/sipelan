@@ -15,6 +15,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log('=== CREATING DISPOSISI ===')
+    console.log('Pengaduan ID:', pengaduan_id)
+    console.log('Ke Bidang ID:', ke_bidang_id)
+    console.log('Keterangan:', keterangan)
+
     // Insert disposisi record
     const { data: disposisi, error: disposisiError } = await supabaseAdmin
       .from('disposisi')
@@ -37,6 +42,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    console.log('✅ Disposisi created:', disposisi)
+
+    console.log('=== UPDATING PENGADUAN ===')
+    console.log('Setting bidang_id to:', ke_bidang_id)
+    console.log('Setting status to: terdisposisi')
+
     // Update pengaduan with bidang_id and status
     const { data: pengaduan, error: updateError } = await supabaseAdmin
       .from('pengaduan')
@@ -49,7 +60,7 @@ export async function POST(request: NextRequest) {
       .select(`
         *,
         kategori_pengaduan (nama_kategori),
-        bidang (id, nama_bidang, kode_bidang)
+        bidang (bidang_id, nama_bidang, kode_bidang)
       `)
       .single()
 
@@ -60,6 +71,14 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    console.log('✅ Pengaduan updated:', {
+      id: pengaduan.id,
+      kode: pengaduan.kode_pengaduan,
+      bidang_id: pengaduan.bidang_id,
+      status: pengaduan.status,
+      bidang: pengaduan.bidang?.nama_bidang
+    })
 
     // Insert status history
     const { error: statusError } = await supabaseAdmin
@@ -113,12 +132,12 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         dari_bidang:dari_bidang_id (
-          id,
+          bidang_id,
           nama_bidang,
           kode_bidang
         ),
         ke_bidang:ke_bidang_id (
-          id,
+          bidang_id,
           nama_bidang,
           kode_bidang
         ),

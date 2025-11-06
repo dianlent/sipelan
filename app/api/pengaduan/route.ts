@@ -127,6 +127,9 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status')
     const bidang_id = searchParams.get('bidang_id')
     
+    console.log('=== GET PENGADUAN API ===')
+    console.log('Params:', { page, limit, status, bidang_id })
+
     let query = supabaseAdmin
       .from('pengaduan')
       .select(`
@@ -137,30 +140,53 @@ export async function GET(request: NextRequest) {
           deskripsi
         ),
         bidang (
-          id,
+          bidang_id,
           nama_bidang,
           kode_bidang
+        ),
+        users (
+          nama_lengkap,
+          email
         )
       `, { count: 'exact' })
       .order('created_at', { ascending: false })
       .range((page - 1) * limit, page * limit - 1)
 
     if (status) {
+      console.log('Filtering by status:', status)
       query = query.eq('status', status)
     }
 
     if (bidang_id) {
-      query = query.eq('bidang_id', parseInt(bidang_id))
+      console.log('Filtering by bidang_id:', bidang_id)
+      const bidangIdInt = parseInt(bidang_id)
+      console.log('Parsed bidang_id:', bidangIdInt)
+      
+      // Filter by bidang_id and only show disposed pengaduan
+      query = query
+        .eq('bidang_id', bidangIdInt)
+        .in('status', ['terdisposisi', 'tindak_lanjut', 'selesai'])
     }
 
     const { data, error, count } = await query
 
     if (error) {
+      console.error('Query error:', error)
       return NextResponse.json(
         { success: false, message: error.message },
         { status: 500 }
       )
     }
+
+    console.log('Query result:', {
+      total: count,
+      returned: data?.length || 0,
+      sample: data?.[0] ? {
+        kode: data[0].kode_pengaduan,
+        status: data[0].status,
+        bidang_id: data[0].bidang_id
+      } : null
+    })
 
     return NextResponse.json({
       success: true,

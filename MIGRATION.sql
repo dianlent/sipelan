@@ -60,3 +60,44 @@ CREATE POLICY "Anyone can insert pengaduan" ON pengaduan
 
 CREATE POLICY "Anyone can view pengaduan by kode" ON pengaduan
     FOR SELECT USING (true);
+
+-- Create disposisi table if not exists
+CREATE TABLE IF NOT EXISTS disposisi (
+    id SERIAL PRIMARY KEY,
+    pengaduan_id UUID REFERENCES pengaduan(id) ON DELETE CASCADE,
+    dari_bidang_id INTEGER REFERENCES bidang(id) ON DELETE SET NULL,
+    ke_bidang_id INTEGER REFERENCES bidang(id) ON DELETE SET NULL,
+    keterangan TEXT,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Create indexes for disposisi table
+CREATE INDEX IF NOT EXISTS idx_disposisi_pengaduan_id ON disposisi(pengaduan_id);
+CREATE INDEX IF NOT EXISTS idx_disposisi_dari_bidang_id ON disposisi(dari_bidang_id);
+CREATE INDEX IF NOT EXISTS idx_disposisi_ke_bidang_id ON disposisi(ke_bidang_id);
+CREATE INDEX IF NOT EXISTS idx_disposisi_created_at ON disposisi(created_at DESC);
+
+-- Enable RLS for disposisi
+ALTER TABLE disposisi ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing disposisi policies
+DROP POLICY IF EXISTS "Allow read disposisi" ON disposisi;
+DROP POLICY IF EXISTS "Allow insert disposisi" ON disposisi;
+DROP POLICY IF EXISTS "Allow update disposisi" ON disposisi;
+
+-- Create disposisi policies
+CREATE POLICY "Allow read disposisi" ON disposisi
+    FOR SELECT USING (true);
+
+CREATE POLICY "Allow insert disposisi" ON disposisi
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow update disposisi" ON disposisi
+    FOR UPDATE USING (true);
+
+-- Grant permissions for disposisi
+GRANT ALL ON disposisi TO authenticated;
+GRANT ALL ON disposisi TO anon;
+GRANT USAGE, SELECT ON SEQUENCE disposisi_id_seq TO authenticated;
+GRANT USAGE, SELECT ON SEQUENCE disposisi_id_seq TO anon;

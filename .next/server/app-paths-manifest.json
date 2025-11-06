@@ -1,9 +1,3 @@
 {
-  "/pengaduan/page": "app/pengaduan/page.js",
-  "/tracking/page": "app/tracking/page.js",
-  "/login/page": "app/login/page.js",
-  "/admin/page": "app/admin/page.js",
-  "/bidang/page": "app/bidang/page.js",
-  "/api/pengaduan/tracking/[kode]/route": "app/api/pengaduan/tracking/[kode]/route.js",
-  "/api/pengaduan/route": "app/api/pengaduan/route.js"
+  "/page": "app/page.js"
 }
