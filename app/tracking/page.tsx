@@ -82,129 +82,33 @@ function TrackingContent() {
     setHasSearched(true)
 
     try {
-      // Try to fetch from API
-      try {
-        const response = await fetch(`http://localhost:3001/api/pengaduan/tracking/${kodeTracking.toUpperCase()}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          
-          if (data.success && data.data) {
-            setPengaduan(data.data)
-            toast.success('Pengaduan ditemukan!')
-            return
-          }
-        }
-        
-        if (response.status === 404) {
-          console.log('❌ API returned 404, checking localStorage...')
-          // Check localStorage before showing error
-          const allPengaduanLocal = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
-          const localDataFound = allPengaduanLocal[kodeTracking.toUpperCase()]
-          
-          if (localDataFound) {
-            console.log('✅ Found in localStorage after API 404')
-            setPengaduan(localDataFound)
-            toast.success('Pengaduan ditemukan!')
-            return
-          }
-          
-          console.log('❌ Not found in localStorage either')
-          toast.error('Pengaduan tidak ditemukan')
-          setPengaduan(null)
-          return
-        }
-      } catch (apiError) {
-        console.log('⚠️ API not available, using localStorage only')
-        // API not available, silently fall through to localStorage
-      }
+      console.log('🔍 Searching for:', kodeTracking.toUpperCase())
       
-      // Check localStorage first
-      console.log('=== TRACKING SEARCH ===')
-      console.log('Searching for:', kodeTracking.toUpperCase())
-      
-      try {
-        const allPengaduanStr = localStorage.getItem('allPengaduan')
-        console.log('localStorage data:', allPengaduanStr)
-        
-        if (!allPengaduanStr || allPengaduanStr === '{}') {
-          console.log('⚠️ localStorage kosong')
-          toast.error('Belum ada pengaduan tersimpan')
-          setPengaduan(null)
-          return
-        }
-        
-        const allPengaduan = JSON.parse(allPengaduanStr)
-        console.log('All pengaduan keys:', Object.keys(allPengaduan))
-        
-        const localData = allPengaduan[kodeTracking.toUpperCase()]
-        console.log('Found data:', localData)
-        
-        if (localData) {
-          console.log('✅ Pengaduan found in localStorage')
-          console.log('Timeline:', localData.timeline)
-          setPengaduan(localData)
-          toast.success('Pengaduan ditemukan!')
-          return
-        } else {
-          console.log('❌ Pengaduan not found')
-        }
-      } catch (localError) {
-        console.error('❌ localStorage error:', localError)
-      }
-      
-      console.log('=== END TRACKING ===')
-      
-      // If not found in localStorage, use default mock data
-      const mockData: PengaduanDetail = {
-        id: '1',
-        kode_pengaduan: kodeTracking.toUpperCase(),
-        judul_pengaduan: 'Upah tidak dibayar sesuai UMR',
-        isi_pengaduan: 'Perusahaan tempat saya bekerja membayar upah di bawah UMR yang ditetapkan pemerintah. Sudah beberapa kali saya komplain namun tidak ada tanggapan dari manajemen.',
-        kategori: 'Pengupahan',
-        status: 'tindak_lanjut',
-        lokasi_kejadian: 'PT ABC Indonesia, Jakarta Selatan',
-        tanggal_kejadian: '2024-01-15',
-        file_bukti: 'bukti_slip_gaji.pdf',
-        created_at: '2024-01-16T10:00:00Z',
-        user: {
-          nama_lengkap: 'John Doe',
-          email: 'john@example.com'
+      // Fetch from API
+      const response = await fetch(`/api/pengaduan/tracking/${kodeTracking.toUpperCase()}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        bidang: {
-          nama_bidang: 'Bidang Hubungan Industrial'
-        },
-        timeline: [
-          {
-            status: 'masuk',
-            keterangan: 'Pengaduan telah diterima sistem',
-            created_at: '2024-01-16T10:00:00Z'
-          },
-          {
-            status: 'terverifikasi',
-            keterangan: 'Pengaduan telah diverifikasi oleh admin',
-            created_at: '2024-01-16T14:30:00Z'
-          },
-          {
-            status: 'terdisposisi',
-            keterangan: 'Pengaduan telah didisposisikan ke Bidang Hubungan Industrial',
-            created_at: '2024-01-17T09:15:00Z'
-          },
-          {
-            status: 'tindak_lanjut',
-            keterangan: 'Bidang sedang menindaklanjuti pengaduan Anda',
-            created_at: '2024-01-18T11:00:00Z'
-          }
-        ]
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok && data.success && data.data) {
+        console.log('✅ Pengaduan found:', data.data)
+        setPengaduan(data.data)
+        toast.success('Pengaduan ditemukan!')
+      } else if (response.status === 404) {
+        console.log('❌ Pengaduan not found')
+        toast.error('Pengaduan tidak ditemukan')
+        setPengaduan(null)
+      } else {
+        throw new Error(data.message || 'Gagal mengambil data pengaduan')
       }
-
-      setPengaduan(mockData)
-      toast.success('Pengaduan ditemukan! (Demo Data)')
+    } catch (error: any) {
+      console.error('Error searching pengaduan:', error)
+      toast.error(error.message || 'Terjadi kesalahan saat mencari pengaduan')
+      setPengaduan(null)
     } finally {
       setIsLoading(false)
     }

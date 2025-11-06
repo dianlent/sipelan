@@ -1,0 +1,106 @@
+================================================================================
+JALANKAN SQL INI DI SUPABASE DASHBOARD → SQL EDITOR
+================================================================================
+
+LANGKAH-LANGKAH:
+1. Buka https://supabase.com/dashboard
+2. Pilih project Anda
+3. Klik "SQL Editor" di sidebar kiri
+4. Klik "+ New query"
+5. Copy-paste SQL di bawah ini
+6. Klik "Run" atau tekan Ctrl+Enter
+
+================================================================================
+
+-- Add reporter info columns to pengaduan table
+ALTER TABLE pengaduan 
+ADD COLUMN IF NOT EXISTS nama_pelapor VARCHAR(255),
+ADD COLUMN IF NOT EXISTS email_pelapor VARCHAR(255),
+ADD COLUMN IF NOT EXISTS no_telepon VARCHAR(50),
+ADD COLUMN IF NOT EXISTS anonim BOOLEAN DEFAULT false;
+
+-- Make user_id nullable for anonymous submissions
+ALTER TABLE pengaduan 
+ALTER COLUMN user_id DROP NOT NULL;
+
+-- Make kode_pengaduan nullable to allow trigger to set it
+ALTER TABLE pengaduan 
+ALTER COLUMN kode_pengaduan DROP NOT NULL;
+
+-- Create or replace function to generate tracking code
+CREATE OR REPLACE FUNCTION generate_kode_pengaduan()
+RETURNS TRIGGER AS $$
+DECLARE
+    year_part TEXT;
+    sequence_num INTEGER;
+    new_kode TEXT;
+BEGIN
+    IF NEW.kode_pengaduan IS NULL OR NEW.kode_pengaduan = '' THEN
+        year_part := EXTRACT(year FROM CURRENT_DATE)::TEXT;
+        
+        SELECT COALESCE(MAX(CAST(SUBSTRING(kode_pengaduan FROM 9) AS INTEGER)), 0) + 1
+        INTO sequence_num
+        FROM pengaduan
+        WHERE kode_pengaduan LIKE 'ADU-' || year_part || '-%';
+        
+        new_kode := 'ADU-' || year_part || '-' || LPAD(sequence_num::TEXT, 4, '0');
+        NEW.kode_pengaduan := new_kode;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Drop existing trigger if exists
+DROP TRIGGER IF EXISTS trg_generate_kode_pengaduan ON pengaduan;
+
+-- Create trigger for auto-generating kode pengaduan
+CREATE TRIGGER trg_generate_kode_pengaduan
+    BEFORE INSERT ON pengaduan
+    FOR EACH ROW
+    EXECUTE FUNCTION generate_kode_pengaduan();
+
+-- Update policies
+DROP POLICY IF EXISTS "Users can insert own pengaduan" ON pengaduan;
+
+CREATE POLICY "Anyone can insert pengaduan" ON pengaduan
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can view pengaduan by kode" ON pengaduan
+    FOR SELECT USING (true);
+
+================================================================================
+SETELAH SELESAI, JALANKAN QUERY INI UNTUK VERIFIKASI:
+================================================================================
+
+-- Check if trigger exists
+SELECT tgname, tgtype, tgenabled 
+FROM pg_trigger 
+WHERE tgname = 'trg_generate_kode_pengaduan';
+
+-- Test insert (akan auto-generate kode)
+INSERT INTO pengaduan (
+    kategori_id, 
+    judul_pengaduan, 
+    isi_pengaduan, 
+    nama_pelapor, 
+    email_pelapor, 
+    no_telepon, 
+    status
+)
+VALUES (
+    1, 
+    'Test Pengaduan', 
+    'Ini adalah test pengaduan untuk verifikasi trigger', 
+    'Test User', 
+    'test@example.com', 
+    '08123456789', 
+    'masuk'
+)
+RETURNING id, kode_pengaduan, judul_pengaduan, created_at;
+
+-- Jika berhasil, Anda akan melihat kode_pengaduan seperti: ADU-2025-0001
+
+================================================================================
+DONE! Setelah SQL berhasil dijalankan, test form pengaduan di browser.
+================================================================================

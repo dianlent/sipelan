@@ -10,6 +10,7 @@ interface User {
   nama_lengkap: string
   role: string
   kode_bidang?: string
+  bidang_id?: number
 }
 
 interface AuthContextType {

@@ -1,20 +1,9 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/api/auth/login/route": "app/api/auth/login/route.js",
-  "/api/auth/register/route": "app/api/auth/register/route.js",
-  "/admin/page": "app/admin/page.js",
-  "/api/pengaduan/[id]/status/route": "app/api/pengaduan/[id]/status/route.js",
-  "/bidang/page": "app/bidang/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/faq/page": "app/faq/page.js",
-  "/forgot-password/page": "app/forgot-password/page.js",
-  "/kebijakan-privasi/page": "app/kebijakan-privasi/page.js",
-  "/login/page": "app/login/page.js",
-  "/page": "app/page.js",
-  "/register/page": "app/register/page.js",
-  "/riwayat/page": "app/riwayat/page.js",
   "/pengaduan/page": "app/pengaduan/page.js",
-  "/syarat-ketentuan/page": "app/syarat-ketentuan/page.js",
-  "/settings/page": "app/settings/page.js",
-  "/tracking/page": "app/tracking/page.js"
+  "/tracking/page": "app/tracking/page.js",
+  "/login/page": "app/login/page.js",
+  "/admin/page": "app/admin/page.js",
+  "/bidang/page": "app/bidang/page.js",
+  "/api/pengaduan/tracking/[kode]/route": "app/api/pengaduan/tracking/[kode]/route.js",
+  "/api/pengaduan/route": "app/api/pengaduan/route.js"
 }

@@ -32,13 +32,6 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
-import { 
-  getAllPengaduan, 
-  updatePengaduanStatus, 
-  assignPengaduanToBidang,
-  getPengaduanStats,
-  type PengaduanData 
-} from '@/utils/storage'
 
 interface Pengaduan {
   id: string
@@ -142,51 +135,43 @@ export default function AdminPage() {
 
   const loadPengaduan = async () => {
     try {
-      // Load all pengaduan from localStorage (Admin sees ALL)
-      const allPengaduanStr = localStorage.getItem('allPengaduan')
-      console.log('=== ADMIN LOAD DEBUG ===')
-      console.log('Raw localStorage data:', allPengaduanStr)
+      console.log('=== LOADING PENGADUAN FROM DATABASE ===')
       
-      if (!allPengaduanStr || allPengaduanStr === '{}') {
-        console.log('⚠️ localStorage kosong atau tidak ada data')
-        setPengaduanList([])
-        toast('Belum ada pengaduan. Silakan buat pengaduan baru atau gunakan tool debug untuk menambah data sample.', {
-          icon: 'ℹ️',
-          duration: 5000
-        })
-        return
+      // Fetch from API
+      const response = await fetch('/api/pengaduan?page=1&limit=100')
+      const result = await response.json()
+      
+      console.log('API Response:', result)
+      
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Gagal memuat data')
       }
       
-      const allPengaduan = JSON.parse(allPengaduanStr)
-      console.log('Parsed data:', allPengaduan)
-      console.log('Total keys:', Object.keys(allPengaduan).length)
+      const pengaduanData = result.data || []
+      console.log('Total pengaduan from DB:', pengaduanData.length)
       
-      // Convert object to array
-      const pengaduanArray: Pengaduan[] = Object.values(allPengaduan).map((p: any) => {
-        console.log('Processing:', p.kode_pengaduan, p)
-        return {
-          id: p.id,
-          kode_pengaduan: p.kode_pengaduan,
-          judul_pengaduan: p.judul_pengaduan,
-          kategori: p.kategori,
-          status: p.status,
-          nama_pelapor: p.user?.nama_lengkap || 'Anonim',
-          created_at: p.created_at,
-          bidang: p.bidang?.nama_bidang || null
-        }
-      })
+      // Convert to display format
+      const pengaduanArray: Pengaduan[] = pengaduanData.map((p: any) => ({
+        id: p.id,
+        kode_pengaduan: p.kode_pengaduan,
+        judul_pengaduan: p.judul_pengaduan,
+        kategori: p.kategori_pengaduan?.nama_kategori || 'Tidak ada kategori',
+        status: p.status,
+        nama_pelapor: p.anonim ? 'Anonim' : (p.nama_pelapor || p.users?.nama_lengkap || 'Tidak diketahui'),
+        created_at: p.created_at,
+        bidang: p.bidang?.nama_bidang || null
+      }))
       
       console.log('Converted array:', pengaduanArray)
-      
-      // Sort by date (newest first)
-      pengaduanArray.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       
       setPengaduanList(pengaduanArray)
       console.log('✅ Data loaded successfully:', pengaduanArray.length, 'pengaduan')
       console.log('=== END DEBUG ===')
       
       if (pengaduanArray.length > 0) {
-        toast.success(`${pengaduanArray.length} pengaduan berhasil dimuat`)
+        toast.success(`${pengaduanArray.length} pengaduan berhasil dimuat dari database`)
+      } else {
+        toast('Belum ada pengaduan di database', { icon: 'ℹ️' })
       }
     } catch (error) {
       console.error('❌ Load error:', error)
@@ -207,47 +192,77 @@ export default function AdminPage() {
       console.log('Pengaduan ID:', selectedPengaduan.id)
       console.log('New Status:', newStatus)
 
-      // Status keterangan map
-      const statusKeterangan: Record<string, string> = {
-        'masuk': 'Pengaduan telah diterima sistem',
-        'terverifikasi': 'Pengaduan telah diverifikasi oleh admin dan dinyatakan valid',
-        'terdisposisi': 'Pengaduan telah didisposisikan ke bidang terkait',
-        'tindak_lanjut': 'Pengaduan sedang ditindaklanjuti oleh bidang terkait',
-        'selesai': 'Pengaduan telah selesai ditindaklanjuti',
-        'ditolak': 'Pengaduan ditolak karena tidak memenuhi syarat'
-      }
+      // Update status via API
+      const response = await fetch(`/api/pengaduan/${selectedPengaduan.id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus
+        })
+      })
 
-      // Update status using storage utility
-      const success = updatePengaduanStatus(
-        selectedPengaduan.kode_pengaduan,
-        newStatus,
-        statusKeterangan[newStatus] || `Status diubah menjadi ${newStatus}`,
-        user?.nama_lengkap || 'Admin'
-      )
+      const result = await response.json()
 
-      if (!success) {
-        throw new Error('Gagal update status')
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Gagal update status')
       }
 
       console.log('✅ Status updated successfully')
-      await new Promise(resolve => setTimeout(resolve, 500))
 
-      // Update local state
-      setPengaduanList(prev =>
-        prev.map(p =>
-          p.id === selectedPengaduan.id
-            ? { ...p, status: newStatus }
-            : p
-        )
-      )
+      // Reload data from database
+      await loadPengaduan()
 
-      toast.success('Status berhasil diupdate')
+      toast.success(result.message || 'Status berhasil diupdate')
       setShowStatusModal(false)
       setNewStatus('')
       console.log('=== END UPDATE ===')
     } catch (error) {
       console.error('❌ Update status error:', error)
-      toast.error('Gagal mengupdate status')
+      toast.error((error as Error).message || 'Gagal mengupdate status')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleVerifikasi = async (pengaduan: Pengaduan) => {
+    setIsLoading(true)
+    try {
+      console.log('=== VERIFIKASI PENGADUAN ===')
+      console.log('Pengaduan:', pengaduan.kode_pengaduan)
+
+      // Update status to terverifikasi
+      const response = await fetch(`/api/pengaduan/${pengaduan.id}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'terverifikasi'
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Gagal verifikasi pengaduan')
+      }
+
+      console.log('✅ Pengaduan terverifikasi')
+
+      toast.success('Pengaduan telah diverifikasi dan siap untuk didisposisi', {
+        duration: 4000,
+        icon: '✅'
+      })
+
+      // Reload data
+      await loadPengaduan()
+
+      console.log('=== END VERIFIKASI ===')
+    } catch (error) {
+      console.error('❌ Verifikasi error:', error)
+      toast.error((error as Error).message || 'Gagal memverifikasi pengaduan')
     } finally {
       setIsLoading(false)
     }
@@ -273,35 +288,48 @@ export default function AdminPage() {
       }
 
       const bidangNama = selectedBidang.nama
-      const bidangKode = selectedBidang.kode
       
       console.log('Bidang Nama:', bidangNama)
-      console.log('Bidang Kode:', bidangKode)
 
-      // Assign pengaduan to bidang using NAMA BIDANG (for consistency)
-      const success = assignPengaduanToBidang(
-        selectedPengaduan.kode_pengaduan,
-        bidangNama,  // Use nama instead of ID
-        keterangan,
-        user?.nama_lengkap || 'Admin'
-      )
+      // Create disposisi via API (will also update pengaduan and status)
+      const response = await fetch('/api/disposisi', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          pengaduan_id: selectedPengaduan.id,
+          dari_bidang_id: null, // Admin disposisi
+          ke_bidang_id: parseInt(disposisiBidang),
+          keterangan: keterangan,
+          user_id: user?.id || null
+        })
+      })
 
-      if (!success) {
-        throw new Error('Gagal disposisi pengaduan')
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Gagal disposisi pengaduan')
       }
 
       console.log('✅ Disposisi saved successfully')
-      await new Promise(resolve => setTimeout(resolve, 500))
 
-      toast.success(`Pengaduan berhasil didisposisikan ke ${bidangNama}`)
+      toast.success(`Pengaduan berhasil didisposisikan ke ${bidangNama}`, {
+        duration: 4000,
+        icon: '📤'
+      })
+      
       setShowDisposisiModal(false)
       setDisposisiBidang('')
       setKeterangan('')
-      loadPengaduan()
+      
+      // Reload data from database
+      await loadPengaduan()
+      
       console.log('=== END DISPOSISI ===')
     } catch (error) {
       console.error('❌ Disposisi error:', error)
-      toast.error('Gagal mendisposisikan pengaduan')
+      toast.error((error as Error).message || 'Gagal mendisposisikan pengaduan')
     } finally {
       setIsLoading(false)
     }
@@ -972,6 +1000,19 @@ export default function AdminPage() {
                       <Eye className="w-4 h-4" />
                       <span>Detail</span>
                     </Link>
+                    
+                    {/* Verifikasi button - only for status "masuk" */}
+                    {pengaduan.status === 'masuk' && (
+                      <button
+                        onClick={() => handleVerifikasi(pengaduan)}
+                        disabled={isLoading}
+                        className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all flex items-center space-x-2 shadow-md hover:shadow-lg hover:scale-105 font-semibold disabled:opacity-50"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        <span>Verifikasi</span>
+                      </button>
+                    )}
+                    
                     <button
                       onClick={() => {
                         setSelectedPengaduan(pengaduan)
@@ -983,13 +1024,15 @@ export default function AdminPage() {
                       <RefreshCw className="w-4 h-4" />
                       <span>Status</span>
                     </button>
-                    {(pengaduan.status === 'masuk' || pengaduan.status === 'terverifikasi' || pengaduan.status === 'diterima') && (
+                    
+                    {/* Disposisi button - only for verified pengaduan */}
+                    {(pengaduan.status === 'terverifikasi' || pengaduan.status === 'diterima') && (
                       <button
                         onClick={() => {
                           setSelectedPengaduan(pengaduan)
                           setShowDisposisiModal(true)
                         }}
-                        className="px-4 py-2 bg-gradient-primary text-white rounded-xl hover:shadow-lg transition-all flex items-center space-x-2"
+                        className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 transition-all flex items-center space-x-2 shadow-md hover:shadow-lg hover:scale-105 font-semibold"
                       >
                         <Send className="w-4 h-4" />
                         <span>Disposisi</span>

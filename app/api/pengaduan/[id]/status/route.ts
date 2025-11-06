@@ -40,17 +40,24 @@ export async function PUT(
       )
     }
 
+    // Status keterangan mapping
+    const statusKeterangan: Record<string, string> = {
+      'masuk': 'Pengaduan telah diterima sistem dan menunggu verifikasi',
+      'terverifikasi': 'Pengaduan telah diverifikasi oleh admin dan siap didisposisi',
+      'terdisposisi': 'Pengaduan telah didisposisikan ke bidang terkait untuk ditindaklanjuti',
+      'tindak_lanjut': 'Pengaduan sedang dalam proses penanganan oleh bidang terkait',
+      'selesai': 'Pengaduan telah diselesaikan. Terima kasih atas laporan Anda'
+    }
+
     // Insert status history
-    await supabaseAdmin
+    const { error: statusHistoryError } = await supabaseAdmin
       .from('pengaduan_status')
-      .insert({
+      .insert([{
         pengaduan_id: pengaduanId,
         status,
-        keterangan: status === 'selesai' 
-          ? 'Pengaduan telah diselesaikan oleh bidang terkait'
-          : 'Status pengaduan diupdate',
+        keterangan: statusKeterangan[status] || 'Status pengaduan diupdate',
         created_at: new Date().toISOString()
-      })
+      }])
 
     // If status is "selesai", send email notification to pelapor
     if (status === 'selesai') {
@@ -181,37 +188,48 @@ async function sendEmailNotification(params: {
     </html>
   `
 
-  // TODO: Implement actual email sending
-  // Using SMTP or email service (SendGrid, AWS SES, etc.)
-  
-  // For now, just log (in production, use actual email service)
+  // Email notification implementation
   console.log('=== EMAIL NOTIFICATION ===')
   console.log('To:', to)
   console.log('Subject:', subject)
   console.log('Pengaduan:', pengaduan.kode)
-  console.log('=========================')
-
-  // Example using nodemailer (uncomment when ready):
-  /*
-  const nodemailer = require('nodemailer')
   
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
-    secure: true,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
+  // Check if email configuration exists
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    try {
+      const nodemailer = require('nodemailer')
+      
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      })
+
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || '"SIPelan" <noreply@sipelan.go.id>',
+        to,
+        subject,
+        html: emailHtml
+      })
+      
+      console.log('✅ Email sent successfully to:', to)
+      console.log('=========================')
+      return true
+      
+    } catch (emailError) {
+      console.error('❌ Failed to send email:', emailError)
+      console.log('=========================')
+      // Don't throw error, just log it
+      return false
     }
-  })
-
-  await transporter.sendMail({
-    from: '"SIPelan" <noreply@sipelan.go.id>',
-    to,
-    subject,
-    html: emailHtml
-  })
-  */
-
-  return true
+  } else {
+    console.log('⚠️  SMTP not configured - Email not sent (logging only)')
+    console.log('Configure SMTP_HOST, SMTP_USER, SMTP_PASS in .env.local')
+    console.log('=========================')
+    return false
+  }
 }

@@ -63,17 +63,18 @@ export default function PengaduanPage() {
 
   const loadCategories = async () => {
     try {
-      // TODO: Fetch from API
-      // Temporary mock data
-      setCategories([
-        { id: 1, nama_kategori: 'Pengupahan', deskripsi: 'Masalah gaji, upah minimum, tunjangan' },
-        { id: 2, nama_kategori: 'Ketenagakerjaan', deskripsi: 'PHK, kontrak kerja, jam kerja' },
-        { id: 3, nama_kategori: 'K3', deskripsi: 'Keselamatan dan kesehatan kerja' },
-        { id: 4, nama_kategori: 'Pelatihan Kerja', deskripsi: 'Program pelatihan dan penempatan' },
-        { id: 5, nama_kategori: 'Lainnya', deskripsi: 'Pengaduan lainnya' }
-      ])
+      const response = await fetch('/api/categories')
+      const result = await response.json()
+      
+      if (result.success && result.data) {
+        setCategories(result.data)
+      } else {
+        console.error('Failed to load categories:', result.message)
+        toast.error('Gagal memuat kategori')
+      }
     } catch (error) {
       console.error('Error loading categories:', error)
+      toast.error('Gagal memuat kategori')
     }
   }
 
@@ -155,101 +156,27 @@ export default function PengaduanPage() {
       console.log('✅ Form validation passed')
       console.log('Submit Data:', Object.fromEntries(submitData))
 
-      // TODO: Send to API
-      // const response = await fetch('/api/pengaduan', {
-      //   method: 'POST',
-      //   body: submitData
-      // })
+      // Send to API
+      console.log('📤 Submitting to API...')
+      const response = await fetch('/api/pengaduan', {
+        method: 'POST',
+        body: submitData
+      })
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const result = await response.json()
+      console.log('📥 API Response:', result)
 
-      // Generate mock tracking code
-      const year = new Date().getFullYear()
-      const randomNum = Math.floor(Math.random() * 9999) + 1
-      const generatedCode = `ADU-${year}-${String(randomNum).padStart(4, '0')}`
-      
-      // Get category name
-      const selectedCategory = categories.find(cat => cat.id.toString() === formData.kategori_id)
-      
-      // Create complete pengaduan object
-      const pengaduanData = {
-        id: generatedCode,
-        kode_pengaduan: generatedCode,
-        judul_pengaduan: formData.judul_pengaduan,
-        isi_pengaduan: formData.isi_pengaduan,
-        kategori: selectedCategory?.nama_kategori || 'Umum',
-        status: 'masuk',
-        lokasi_kejadian: formData.lokasi_kejadian,
-        tanggal_kejadian: formData.tanggal_kejadian,
-        file_bukti: formData.file_bukti?.name || null,
-        created_at: new Date().toISOString(),
-        user: {
-          nama_lengkap: formData.anonim ? 'Anonim' : formData.nama_pelapor,
-          email: formData.anonim ? '' : formData.email_pelapor,
-          anonim: formData.anonim
-        },
-        no_telepon: formData.no_telepon,
-        timeline: [
-          {
-            status: 'masuk',
-            keterangan: 'Pengaduan telah diterima sistem dan menunggu verifikasi',
-            created_at: new Date().toISOString()
-          }
-        ]
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Gagal menyimpan pengaduan')
       }
-      
-      // Save complete data to localStorage with validation
-      console.log('=== SAVING PENGADUAN ===')
-      console.log('Generated Code:', generatedCode)
-      console.log('Pengaduan Data:', pengaduanData)
-      
-      try {
-        // Check if localStorage is available
-        if (typeof window === 'undefined' || !window.localStorage) {
-          console.error('❌ localStorage not available')
-          throw new Error('Browser tidak mendukung localStorage')
-        }
 
-        // Save to allPengaduan
-        const allPengaduan = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
-        allPengaduan[generatedCode] = pengaduanData
-        localStorage.setItem('allPengaduan', JSON.stringify(allPengaduan))
-        console.log('✅ Saved to allPengaduan. Total:', Object.keys(allPengaduan).length)
-        
-        // Also save to user's list
-        const savedCodes = JSON.parse(localStorage.getItem('myPengaduan') || '[]')
-        savedCodes.push({
-          kode: generatedCode,
-          judul: formData.judul_pengaduan,
-          tanggal: new Date().toISOString()
-        })
-        localStorage.setItem('myPengaduan', JSON.stringify(savedCodes))
-        console.log('✅ Saved to myPengaduan. Total:', savedCodes.length)
-        
-        // Verify data was saved
-        const verification = JSON.parse(localStorage.getItem('allPengaduan') || '{}')
-        if (verification[generatedCode]) {
-          console.log('✅ Verification SUCCESS: Data tersimpan dengan benar')
-          console.log('✅ Pengaduan data:', verification[generatedCode])
-        } else {
-          console.error('❌ Verification FAILED: Data tidak tersimpan')
-          throw new Error('Data gagal tersimpan ke localStorage')
-        }
-        
-        console.log('=== END SAVING ===')
-      } catch (saveError) {
-        console.error('❌ Error saving to localStorage:', saveError)
-        // Fallback: Store in memory for session
-        console.log('⚠️ Using memory fallback...')
-        const memoryStorage = (window as any).__sipelan_memory_storage = (window as any).__sipelan_memory_storage || {}
-        memoryStorage[generatedCode] = pengaduanData
-        console.log('✅ Saved to memory fallback')
-      }
+      // Success!
+      const generatedCode = result.data.kode_pengaduan
+      console.log('✅ Pengaduan berhasil disimpan dengan kode:', generatedCode)
       
       setKodeTracking(generatedCode)
       setShowSuccessModal(true)
-      toast.success('Pengaduan berhasil diajukan dan tersimpan!')
+      toast.success('Pengaduan berhasil disimpan ke database!')
       
       // Reset form after successful submission
       setFormData({
@@ -264,8 +191,8 @@ export default function PengaduanPage() {
         no_telepon: '',
         anonim: false
       })
-    } catch (error) {
-      toast.error('Gagal mengajukan pengaduan. Silakan coba lagi.')
+    } catch (error: any) {
+      toast.error(error.message || 'Gagal mengajukan pengaduan. Silakan coba lagi.')
       console.error('Submit error:', error)
     } finally {
       setIsLoading(false)
