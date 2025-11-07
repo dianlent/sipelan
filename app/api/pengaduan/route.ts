@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sendEmail, generatePengaduanCreatedEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -95,6 +96,27 @@ export async function POST(request: NextRequest) {
     if (statusError) {
       console.error('Status insert error:', statusError)
       // Don't fail the whole request if status insert fails
+    }
+
+    // Send email notification to reporter (if not anonymous)
+    if (!anonim && email_pelapor) {
+      try {
+        const emailHtml = generatePengaduanCreatedEmail(pengaduan, email_pelapor)
+        const emailResult = await sendEmail(
+          email_pelapor,
+          `Pengaduan Diterima - ${pengaduan.kode_pengaduan}`,
+          emailHtml
+        )
+        
+        if (emailResult.success) {
+          console.log('Email notification sent to:', email_pelapor)
+        } else {
+          console.error('Failed to send email notification:', emailResult.error)
+        }
+      } catch (emailError) {
+        console.error('Email sending error:', emailError)
+        // Don't fail the request if email fails
+      }
     }
 
     // Return success response with kode_pengaduan

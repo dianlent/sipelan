@@ -55,9 +55,10 @@ export default function HomePage() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/stats')
+      const response = await fetch('/api/stats?format=simple&range=1year')
       if (response.ok) {
         const data = await response.json()
+        console.log('Homepage stats loaded:', data)
         setStats(data)
       }
     } catch (error) {
@@ -464,12 +465,11 @@ export default function HomePage() {
       {/* Stats Section */}
       <section className="py-20 bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-3 gap-8">
             {[
-              { icon: <Users />, number: isLoading ? '...' : `${stats.totalUsers}+`, label: "Pengguna Aktif", color: "from-purple-500 to-pink-500" },
-              { icon: <ClipboardList />, number: isLoading ? '...' : `${stats.selesai}+`, label: "Pengaduan Selesai", color: "from-blue-500 to-cyan-500" },
-              { icon: <Clock />, number: isLoading ? '...' : `${stats.avgResponseTime}`, label: "Jam Response", color: "from-orange-500 to-yellow-500" },
-              { icon: <Star />, number: isLoading ? '...' : `${stats.satisfaction}%`, label: "Kepuasan", color: "from-green-500 to-emerald-500" }
+              { icon: <Users />, number: `${stats.totalUsers}+`, label: "Pengguna Aktif", color: "from-purple-500 to-pink-500" },
+              { icon: <ClipboardList />, number: `${stats.selesai}+`, label: "Pengaduan Selesai", color: "from-blue-500 to-cyan-500" },
+              { icon: <Star />, number: `${stats.satisfaction}%`, label: "Tingkat Kepuasan", color: "from-green-500 to-emerald-500" }
             ].map((stat, index) => (
               <motion.div
                 key={index}
@@ -483,8 +483,17 @@ export default function HomePage() {
                   <div className={`w-20 h-20 bg-gradient-to-br ${stat.color} rounded-2xl flex items-center justify-center text-white mx-auto mb-6 shadow-lg group-hover:scale-110 transition-transform`}>
                     {stat.icon}
                   </div>
-                  <h3 className="text-5xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">{stat.number}</h3>
-                  <p className="text-gray-600 font-semibold uppercase tracking-wider text-sm">{stat.label}</p>
+                  {isLoading ? (
+                    <>
+                      <div className="h-12 bg-gray-200 rounded-lg mx-auto mb-3 w-32 animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded mx-auto w-24 animate-pulse"></div>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-5xl font-extrabold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-3">{stat.number}</h3>
+                      <p className="text-gray-600 font-semibold uppercase tracking-wider text-sm">{stat.label}</p>
+                    </>
+                  )}
                 </div>
               </motion.div>
             ))}

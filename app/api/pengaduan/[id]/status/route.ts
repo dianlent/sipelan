@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { sendEmail, generateStatusUpdateEmail } from '@/lib/email'
 
 export async function PUT(
   request: NextRequest,
@@ -16,6 +17,15 @@ export async function PUT(
         { status: 400 }
       )
     }
+
+    // Get current pengaduan data first (to get old status)
+    const { data: currentPengaduan } = await supabaseAdmin
+      .from('pengaduan')
+      .select('*, kategori_pengaduan (nama_kategori), bidang (nama_bidang, kode_bidang)')
+      .eq('id', pengaduanId)
+      .single()
+
+    const oldStatus = currentPengaduan?.status || 'masuk'
 
     // Update status in database
     const { data: pengaduan, error: updateError } = await supabaseAdmin
@@ -59,32 +69,31 @@ export async function PUT(
         created_at: new Date().toISOString()
       }])
 
-    // If status is "selesai", send email notification to pelapor
-    if (status === 'selesai') {
+    // Send email notification to reporter (if not anonymous and status changed)
+    if (!pengaduan.anonim && pengaduan.email_pelapor && oldStatus !== status) {
       try {
-        // Send email notification
-        await sendEmailNotification({
-          to: pengaduan.email_pelapor,
-          subject: `Pengaduan ${pengaduan.kode_pengaduan} Telah Selesai`,
-          pengaduan: {
-            kode: pengaduan.kode_pengaduan,
-            judul: pengaduan.judul_pengaduan,
-            nama_pelapor: pengaduan.nama_pelapor,
-            bidang: pengaduan.bidang?.nama_bidang || 'Bidang Terkait'
-          }
-        })
-
-        console.log(`Email notification sent to ${pengaduan.email_pelapor}`)
+        const emailHtml = generateStatusUpdateEmail(pengaduan, oldStatus, status, pengaduan.email_pelapor)
+        const emailResult = await sendEmail(
+          pengaduan.email_pelapor,
+          `Update Status Pengaduan - ${pengaduan.kode_pengaduan}`,
+          emailHtml
+        )
+        
+        if (emailResult.success) {
+          console.log(`✅ Email notification sent to ${pengaduan.email_pelapor} for status change: ${oldStatus} → ${status}`)
+        } else {
+          console.error('❌ Failed to send email notification:', emailResult.error)
+        }
       } catch (emailError) {
-        console.error('Email error:', emailError)
+        console.error('Email sending error:', emailError)
         // Don't fail the request if email fails
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: status === 'selesai' 
-        ? 'Pengaduan selesai! Notifikasi email telah dikirim ke pelapor'
+      message: !pengaduan.anonim && pengaduan.email_pelapor
+        ? 'Status berhasil diupdate dan notifikasi email telah dikirim'
         : 'Status berhasil diupdate',
       data: pengaduan
     })
@@ -95,141 +104,5 @@ export async function PUT(
       { success: false, message: 'Terjadi kesalahan server' },
       { status: 500 }
     )
-  }
-}
-
-// Email notification function
-async function sendEmailNotification(params: {
-  to: string
-  subject: string
-  pengaduan: {
-    kode: string
-    judul: string
-    nama_pelapor: string
-    bidang: string
-  }
-}) {
-  const { to, subject, pengaduan } = params
-
-  // Email HTML template
-  const emailHtml = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
-        .badge { display: inline-block; background: #10b981; color: white; padding: 8px 16px; border-radius: 20px; font-weight: bold; margin: 10px 0; }
-        .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea; }
-        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
-        .button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="header">
-          <h1>✅ Pengaduan Selesai</h1>
-          <p>SIPelan - Sistem Pengaduan Layanan Online Naker</p>
-        </div>
-        <div class="content">
-          <p>Yth. <strong>${pengaduan.nama_pelapor}</strong>,</p>
-          
-          <p>Kami informasikan bahwa pengaduan Anda telah <strong>selesai</strong> diproses oleh ${pengaduan.bidang}.</p>
-          
-          <div class="info-box">
-            <h3 style="margin-top: 0; color: #667eea;">Detail Pengaduan:</h3>
-            <table style="width: 100%;">
-              <tr>
-                <td style="padding: 8px 0;"><strong>Kode Pengaduan:</strong></td>
-                <td style="padding: 8px 0;">${pengaduan.kode}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0;"><strong>Judul:</strong></td>
-                <td style="padding: 8px 0;">${pengaduan.judul}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0;"><strong>Status:</strong></td>
-                <td style="padding: 8px 0;"><span class="badge">SELESAI</span></td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0;"><strong>Ditangani oleh:</strong></td>
-                <td style="padding: 8px 0;">${pengaduan.bidang}</td>
-              </tr>
-            </table>
-          </div>
-
-          <p>Terima kasih telah menggunakan layanan SIPelan. Kami berharap penyelesaian pengaduan ini dapat membantu mengatasi permasalahan Anda.</p>
-
-          <center>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL}/tracking?kode=${pengaduan.kode}" class="button">
-              Lihat Detail Pengaduan
-            </a>
-          </center>
-
-          <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            Jika Anda memiliki pertanyaan atau memerlukan bantuan lebih lanjut, silakan hubungi kami melalui:
-          </p>
-          <ul>
-            <li>Email: info@disnaker.go.id</li>
-            <li>Telepon: (021) 1234-5678</li>
-          </ul>
-        </div>
-        <div class="footer">
-          <p>&copy; 2024 Dinas Ketenagakerjaan. All rights reserved.</p>
-          <p style="font-size: 12px; color: #9ca3af;">
-            Email ini dikirim secara otomatis, mohon tidak membalas email ini.
-          </p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `
-
-  // Email notification implementation
-  console.log('=== EMAIL NOTIFICATION ===')
-  console.log('To:', to)
-  console.log('Subject:', subject)
-  console.log('Pengaduan:', pengaduan.kode)
-  
-  // Check if email configuration exists
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    try {
-      const nodemailer = require('nodemailer')
-      
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
-        }
-      })
-
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || '"SIPelan" <noreply@sipelan.go.id>',
-        to,
-        subject,
-        html: emailHtml
-      })
-      
-      console.log('✅ Email sent successfully to:', to)
-      console.log('=========================')
-      return true
-      
-    } catch (emailError) {
-      console.error('❌ Failed to send email:', emailError)
-      console.log('=========================')
-      // Don't throw error, just log it
-      return false
-    }
-  } else {
-    console.log('⚠️  SMTP not configured - Email not sent (logging only)')
-    console.log('Configure SMTP_HOST, SMTP_USER, SMTP_PASS in .env.local')
-    console.log('=========================')
-    return false
   }
 }

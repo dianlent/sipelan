@@ -37,11 +37,9 @@ export default function AdminSidebar({ user, onLogout }: AdminSidebarProps) {
       ]
     },
     {
-      title: 'SUPPORT',
+      title: 'ANALYTICS',
       items: [
         { icon: BarChart3, label: 'Laporan', href: '/admin/reports', badge: null },
-        { icon: MessageSquare, label: 'Pesan', href: '/admin/messages', badge: '3' },
-        { icon: Bell, label: 'Notifikasi', href: '/admin/notifications', badge: '12' },
       ]
     },
     {
