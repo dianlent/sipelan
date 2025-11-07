@@ -4,9 +4,19 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts'
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js'
+import { Line, Bar, Pie, Doughnut } from 'react-chartjs-2'
 import {
   TrendingUp, FileText, Users, Clock, CheckCircle,
   AlertCircle, Calendar, Download, Filter
@@ -14,6 +24,20 @@ import {
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import AdminSidebar from '@/components/AdminSidebar'
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+)
 
 interface Stats {
   totalPengaduan: number
@@ -58,8 +82,6 @@ export default function ReportsPage() {
       setIsLoading(false)
     }
   }
-
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899']
 
   if (authLoading) {
     return (
@@ -196,33 +218,68 @@ export default function ReportsPage() {
                     </div>
                     <Calendar className="w-5 h-5 text-gray-400" />
                   </div>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={stats.pengaduanByMonth}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="month" stroke="#6b7280" style={{ fontSize: '12px' }} />
-                      <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#fff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="count"
-                        stroke="#3B82F6"
-                        strokeWidth={3}
-                        dot={{ fill: '#3B82F6', r: 5 }}
-                        activeDot={{ r: 7 }}
-                        name="Jumlah Pengaduan"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <div className="h-[300px]">
+                    <Line
+                      data={{
+                        labels: stats.pengaduanByMonth.map(item => item.month),
+                        datasets: [{
+                          label: 'Jumlah Pengaduan',
+                          data: stats.pengaduanByMonth.map(item => item.count),
+                          borderColor: '#3B82F6',
+                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                          borderWidth: 3,
+                          fill: true,
+                          tension: 0.4,
+                          pointRadius: 5,
+                          pointHoverRadius: 7,
+                          pointBackgroundColor: '#3B82F6'
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            display: true,
+                            position: 'top' as const
+                          },
+                          tooltip: {
+                            backgroundColor: '#fff',
+                            titleColor: '#1f2937',
+                            bodyColor: '#6b7280',
+                            borderColor: '#e5e7eb',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false
+                          }
+                        },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: {
+                              color: '#6b7280',
+                              font: { size: 12 }
+                            },
+                            grid: {
+                              color: '#f3f4f6'
+                            }
+                          },
+                          x: {
+                            ticks: {
+                              color: '#6b7280',
+                              font: { size: 12 }
+                            },
+                            grid: {
+                              display: false
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
                 </motion.div>
 
-                {/* Pie Chart - Status Pengaduan */}
+                {/* Doughnut Chart - Status Pengaduan */}
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -235,25 +292,42 @@ export default function ReportsPage() {
                     </div>
                     <CheckCircle className="w-5 h-5 text-gray-400" />
                   </div>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={stats.pengaduanByStatus}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ status, percent }) => `${status}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        dataKey="count"
-                      >
-                        {stats.pengaduanByStatus.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <div className="h-[300px] flex items-center justify-center">
+                    <Doughnut
+                      data={{
+                        labels: stats.pengaduanByStatus.map(item => item.status),
+                        datasets: [{
+                          data: stats.pengaduanByStatus.map(item => item.count),
+                          backgroundColor: stats.pengaduanByStatus.map(item => item.color),
+                          borderWidth: 2,
+                          borderColor: '#fff'
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            display: true,
+                            position: 'bottom' as const,
+                            labels: {
+                              padding: 15,
+                              font: { size: 12 },
+                              color: '#6b7280'
+                            }
+                          },
+                          tooltip: {
+                            backgroundColor: '#fff',
+                            titleColor: '#1f2937',
+                            bodyColor: '#6b7280',
+                            borderColor: '#e5e7eb',
+                            borderWidth: 1,
+                            padding: 12
+                          }
+                        }
+                      }}
+                    />
+                  </div>
                 </motion.div>
               </div>
 
@@ -273,21 +347,58 @@ export default function ReportsPage() {
                     </div>
                     <Filter className="w-5 h-5 text-gray-400" />
                   </div>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={stats.pengaduanByKategori}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="kategori" stroke="#6b7280" style={{ fontSize: '12px' }} />
-                      <YAxis stroke="#6b7280" style={{ fontSize: '12px' }} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#fff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Bar dataKey="count" fill="#10B981" radius={[8, 8, 0, 0]} name="Jumlah" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div className="h-[300px]">
+                    <Bar
+                      data={{
+                        labels: stats.pengaduanByKategori.map(item => item.kategori),
+                        datasets: [{
+                          label: 'Jumlah',
+                          data: stats.pengaduanByKategori.map(item => item.count),
+                          backgroundColor: '#10B981',
+                          borderRadius: 8,
+                          borderSkipped: false
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            display: false
+                          },
+                          tooltip: {
+                            backgroundColor: '#fff',
+                            titleColor: '#1f2937',
+                            bodyColor: '#6b7280',
+                            borderColor: '#e5e7eb',
+                            borderWidth: 1,
+                            padding: 12
+                          }
+                        },
+                        scales: {
+                          y: {
+                            beginAtZero: true,
+                            ticks: {
+                              color: '#6b7280',
+                              font: { size: 12 }
+                            },
+                            grid: {
+                              color: '#f3f4f6'
+                            }
+                          },
+                          x: {
+                            ticks: {
+                              color: '#6b7280',
+                              font: { size: 12 }
+                            },
+                            grid: {
+                              display: false
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
                 </motion.div>
 
                 {/* Bar Chart - Pengaduan by Bidang */}
@@ -304,21 +415,59 @@ export default function ReportsPage() {
                     </div>
                     <FileText className="w-5 h-5 text-gray-400" />
                   </div>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={stats.pengaduanByBidang} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis type="number" stroke="#6b7280" style={{ fontSize: '12px' }} />
-                      <YAxis dataKey="bidang" type="category" stroke="#6b7280" style={{ fontSize: '12px' }} width={120} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#fff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px'
-                        }}
-                      />
-                      <Bar dataKey="count" fill="#8B5CF6" radius={[0, 8, 8, 0]} name="Jumlah" />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <div className="h-[300px]">
+                    <Bar
+                      data={{
+                        labels: stats.pengaduanByBidang.map(item => item.bidang),
+                        datasets: [{
+                          label: 'Jumlah',
+                          data: stats.pengaduanByBidang.map(item => item.count),
+                          backgroundColor: '#8B5CF6',
+                          borderRadius: 8,
+                          borderSkipped: false
+                        }]
+                      }}
+                      options={{
+                        indexAxis: 'y' as const,
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: {
+                            display: false
+                          },
+                          tooltip: {
+                            backgroundColor: '#fff',
+                            titleColor: '#1f2937',
+                            bodyColor: '#6b7280',
+                            borderColor: '#e5e7eb',
+                            borderWidth: 1,
+                            padding: 12
+                          }
+                        },
+                        scales: {
+                          x: {
+                            beginAtZero: true,
+                            ticks: {
+                              color: '#6b7280',
+                              font: { size: 12 }
+                            },
+                            grid: {
+                              color: '#f3f4f6'
+                            }
+                          },
+                          y: {
+                            ticks: {
+                              color: '#6b7280',
+                              font: { size: 12 }
+                            },
+                            grid: {
+                              display: false
+                            }
+                          }
+                        }
+                      }}
+                    />
+                  </div>
                 </motion.div>
               </div>
             </>
