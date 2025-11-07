@@ -225,19 +225,19 @@ export default function PengaduanManagementPage() {
       
       <div className="lg:pl-[280px]">
         <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-          <div className="px-8 py-4">
-            <h2 className="text-2xl font-bold text-gray-900">Manajemen Pengaduan</h2>
+          <div className="px-4 sm:px-6 lg:px-8 py-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Manajemen Pengaduan</h2>
             <p className="text-sm text-gray-500">Kelola dan disposisikan pengaduan masyarakat</p>
           </div>
         </header>
 
-        <div className="p-8">
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+        <div className="p-4 sm:p-6 lg:p-8">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
             <div className="bg-white rounded-xl p-6 border border-gray-200">
               <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <FileText className="w-6 h-6 text-purple-600" />
                 </div>
               </div>
               <h3 className="text-3xl font-bold text-gray-900 mb-1">{stats.total}</h3>

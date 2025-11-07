@@ -143,15 +143,15 @@ export default function UsersManagementPage() {
       
       <div className="lg:pl-[280px]">
         <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-          <div className="px-8 py-4">
-            <h2 className="text-2xl font-bold text-gray-900">Manajemen User</h2>
-            <p className="text-sm text-gray-500">Kelola pengguna sistem SIPelan</p>
+          <div className="px-4 sm:px-6 lg:px-8 py-4">
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Manajemen User</h2>
+            <p className="text-sm text-gray-500 mt-1">Kelola pengguna sistem SIPelan</p>
           </div>
         </header>
 
-        <div className="p-8">
+        <div className="p-4 sm:p-6 lg:p-8">
           {/* Main Content */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
             {/* Header Actions */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
               <div className="flex-1 flex gap-3">
@@ -178,30 +178,32 @@ export default function UsersManagementPage() {
                 </select>
               </div>
 
-              <div className="flex items-center space-x-3">
+              <div className="flex gap-2">
                 <button
                   onClick={loadUsers}
                   disabled={isLoadingData}
-                  className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                  className="flex items-center space-x-2 px-3 sm:px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <RefreshCw className={`w-4 h-4 ${isLoadingData ? 'animate-spin' : ''}`} />
-                  <span>Refresh</span>
+                  <span className="hidden sm:inline">Refresh</span>
                 </button>
                 
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="flex items-center space-x-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>Tambah User</span>
+                  <span className="hidden sm:inline">Tambah User</span>
                 </button>
               </div>
             </div>
 
             {/* Users Table */}
             {isLoadingData ? (
-              <div className="overflow-x-auto">
-                <table className="w-full">
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="inline-block min-w-full align-middle">
+                  <div className="overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">User</th>
@@ -246,10 +248,14 @@ export default function UsersManagementPage() {
                     ))}
                   </tbody>
                 </table>
+                  </div>
+                </div>
               </div>
             ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <div className="overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-200">
                 <thead>
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">User</th>
@@ -329,6 +335,8 @@ export default function UsersManagementPage() {
                   <p className="text-gray-500">Tidak ada user ditemukan</p>
                 </div>
               )}
+                </div>
+              </div>
             </div>
             )}
           </div>

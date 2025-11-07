@@ -185,24 +185,24 @@ export default function SettingsPage() {
 
       <div className="lg:pl-[280px]">
         <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-          <div className="px-8 py-4">
+          <div className="px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center">
                 <Settings className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">Pengaturan</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Pengaturan</h2>
                 <p className="text-sm text-gray-500">Kelola pengaturan akun dan sistem</p>
               </div>
             </div>
           </div>
         </header>
 
-        <div className="p-8">
+        <div className="p-4 sm:p-6 lg:p-8">
           <div className="max-w-5xl mx-auto">
             {/* Tabs */}
             <div className="bg-white rounded-xl border border-gray-200 mb-6 overflow-hidden">
-              <div className="flex border-b border-gray-200 overflow-x-auto">
+              <div className="flex border-b border-gray-200 overflow-x-auto scrollbar-hide">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}

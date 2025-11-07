@@ -105,10 +105,10 @@ export default function ReportsPage() {
 
       <div className="lg:pl-[280px]">
         <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-          <div className="px-8 py-4 flex items-center justify-between">
+          <div className="px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Laporan & Statistik</h2>
-              <p className="text-sm text-gray-500">Analisis data pengaduan dan performa sistem</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Laporan & Statistik</h2>
+              <p className="text-sm text-gray-500 mt-1">Analisis data pengaduan dan performa sistem</p>
             </div>
             <div className="flex items-center space-x-3">
               <select
@@ -129,7 +129,7 @@ export default function ReportsPage() {
           </div>
         </header>
 
-        <div className="p-8">
+        <div className="p-4 sm:p-6 lg:p-8">
           {isLoading ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -138,7 +138,7 @@ export default function ReportsPage() {
           ) : stats ? (
             <>
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
