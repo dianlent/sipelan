@@ -34,7 +34,6 @@ export default function AdminSidebar({ user, onLogout }: AdminSidebarProps) {
         { icon: LayoutDashboard, label: 'Dashboard', href: '/admin', badge: null },
         { icon: FileText, label: 'Pengaduan', href: '/admin/pengaduan', badge: '5' },
         { icon: Users, label: 'Pengguna', href: '/admin/users', badge: null },
-        { icon: Building, label: 'Bidang', href: '/admin/bidang', badge: null },
       ]
     },
     {

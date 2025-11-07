@@ -16,10 +16,12 @@ interface User {
   username: string
   email: string
   nama_lengkap: string
-  role: 'admin' | 'bidang' | 'masyarakat'
+  role: string
   bidang_id?: number
-  no_telepon?: string
+  kode_bidang?: string
+  is_active: boolean
   created_at: string
+  updated_at: string
 }
 
 export default function UsersManagementPage() {
@@ -65,6 +67,11 @@ export default function UsersManagementPage() {
     try {
       console.log('Loading users from database...')
       const response = await fetch('/api/users')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const result = await response.json()
       
       console.log('Users API response:', result)
@@ -74,11 +81,21 @@ export default function UsersManagementPage() {
         setUsers(result.data)
         setFilteredUsers(result.data)
       } else {
+        console.error('API returned error:', result)
         throw new Error(result.message || 'Gagal memuat data')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading users:', error)
-      toast.error('Gagal memuat data user dari database')
+      console.error('Error stack:', error.stack)
+      
+      let errorMessage = 'Gagal memuat data user dari database'
+      if (error.message) {
+        errorMessage = error.message
+      }
+      
+      toast.error(errorMessage, {
+        duration: 5000
+      })
       setUsers([])
       setFilteredUsers([])
     } finally {
@@ -190,7 +207,7 @@ export default function UsersManagementPage() {
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">User</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Role</th>
-                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Telepon</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Terdaftar</th>
                       <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Aksi</th>
                     </tr>
@@ -238,7 +255,7 @@ export default function UsersManagementPage() {
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">User</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Role</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Telepon</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Status</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Terdaftar</th>
                     <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Aksi</th>
                   </tr>
@@ -269,14 +286,13 @@ export default function UsersManagementPage() {
                         </span>
                       </td>
                       <td className="py-4 px-4">
-                        {user.no_telepon ? (
-                          <div className="flex items-center space-x-2 text-gray-600">
-                            <Phone className="w-4 h-4" />
-                            <span className="text-sm">{user.no_telepon}</span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
+                        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${
+                          user.is_active 
+                            ? 'bg-green-100 text-green-700 border-green-200' 
+                            : 'bg-red-100 text-red-700 border-red-200'
+                        }`}>
+                          {user.is_active ? 'Aktif' : 'Nonaktif'}
+                        </span>
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center space-x-2 text-gray-600">

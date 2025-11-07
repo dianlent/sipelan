@@ -1,14 +1,6 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/tracking/page": "app/tracking/page.js",
   "/admin/page": "app/admin/page.js",
-  "/bidang/page": "app/bidang/page.js",
   "/admin/pengaduan/page": "app/admin/pengaduan/page.js",
-  "/admin/users/page": "app/admin/users/page.js",
-  "/api/users/route": "app/api/users/route.js",
-  "/api/pengaduan/tracking/[kode]/route": "app/api/pengaduan/tracking/[kode]/route.js",
-  "/api/pengaduan/route": "app/api/pengaduan/route.js",
-  "/admin/bidang/page": "app/admin/bidang/page.js",
-  "/api/kategori-bidang/route": "app/api/kategori-bidang/route.js",
-  "/api/bidang/route": "app/api/bidang/route.js"
+  "/admin/users/page": "app/admin/users/page.js"
 }
