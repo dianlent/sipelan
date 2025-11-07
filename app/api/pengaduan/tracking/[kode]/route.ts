@@ -45,10 +45,10 @@ export async function GET(
       )
     }
 
-    // Fetch timeline
+    // Fetch timeline with tanggapan and petugas
     const { data: timeline, error: timelineError } = await supabaseAdmin
       .from('pengaduan_status')
-      .select('*')
+      .select('*, tanggapan, petugas')
       .eq('pengaduan_id', pengaduan.id)
       .order('created_at', { ascending: true })
 

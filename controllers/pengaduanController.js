@@ -39,25 +39,36 @@ const createPengaduan = async (req, res) => {
             file_bukti
         };
 
+        // Model now handles retry logic internally
         const pengaduan = await Pengaduan.create(pengaduanData);
 
+        // Send email notification
         try {
             const emailTemplate = generatePengaduanEmailTemplate(pengaduan, 'diterima');
             await sendEmail(req.user.email, `Pengaduan Diterima - ${pengaduan.kode_pengaduan}`, emailTemplate);
         } catch (emailError) {
             console.error('Failed to send email:', emailError);
+            // Don't fail the request if email fails
         }
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: 'Pengaduan berhasil dibuat',
             data: pengaduan
         });
+
     } catch (error) {
         console.error('Create pengaduan error:', error);
+        
+        // User-friendly error messages
+        let errorMessage = error.message;
+        if (error.message.includes('kode_pengaduan') || error.message.includes('duplicate')) {
+            errorMessage = 'Terjadi kesalahan saat membuat kode pengaduan. Silakan coba lagi dalam beberapa saat.';
+        }
+        
         res.status(500).json({
             success: false,
-            message: error.message
+            message: errorMessage
         });
     }
 };

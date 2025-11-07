@@ -168,21 +168,42 @@ export default function BidangPage() {
       console.log('Pengaduan:', selectedPengaduan.kode_pengaduan)
       console.log('New Status:', statusUpdate)
 
-      // Update status via API
-      const response = await fetch(`/api/pengaduan/${selectedPengaduan.id}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: statusUpdate
+      // If there's a tanggapan, submit it along with status update
+      if (tanggapan.trim()) {
+        const tanggapanResponse = await fetch(`/api/pengaduan/${selectedPengaduan.id}/tanggapan`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tanggapan: tanggapan,
+            petugas: user?.nama_lengkap || 'Petugas Bidang',
+            status: statusUpdate
+          })
         })
-      })
 
-      const result = await response.json()
+        const tanggapanResult = await tanggapanResponse.json()
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Gagal update status')
+        if (!tanggapanResponse.ok || !tanggapanResult.success) {
+          throw new Error(tanggapanResult.message || 'Gagal menyimpan tanggapan')
+        }
+      } else {
+        // Update status only via API
+        const response = await fetch(`/api/pengaduan/${selectedPengaduan.id}/status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            status: statusUpdate
+          })
+        })
+
+        const result = await response.json()
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || 'Gagal update status')
+        }
       }
 
       console.log('✅ Status updated successfully')
@@ -199,11 +220,12 @@ export default function BidangPage() {
           icon: '✅'
         })
       } else {
-        toast.success('Status berhasil diupdate')
+        toast.success(tanggapan.trim() ? 'Status dan tanggapan berhasil diupdate' : 'Status berhasil diupdate')
       }
 
       setShowDetailModal(false)
       setStatusUpdate('')
+      setTanggapan('')
       console.log('=== END UPDATE ===')
     } catch (error) {
       console.error('❌ Update error:', error)
@@ -230,21 +252,23 @@ export default function BidangPage() {
       console.log('Pengaduan:', selectedPengaduan.kode_pengaduan)
       console.log('Tanggapan:', tanggapan)
 
-      // Update status to selesai via API
-      const response = await fetch(`/api/pengaduan/${selectedPengaduan.id}/status`, {
-        method: 'PUT',
+      // Submit tanggapan via new API endpoint
+      const tanggapanResponse = await fetch(`/api/pengaduan/${selectedPengaduan.id}/tanggapan`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          tanggapan: tanggapan,
+          petugas: user?.nama_lengkap || 'Petugas Bidang',
           status: 'selesai'
         })
       })
 
-      const result = await response.json()
+      const tanggapanResult = await tanggapanResponse.json()
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Gagal menyimpan tanggapan')
+      if (!tanggapanResponse.ok || !tanggapanResult.success) {
+        throw new Error(tanggapanResult.message || 'Gagal menyimpan tanggapan')
       }
 
       console.log('✅ Tanggapan saved successfully')
@@ -254,9 +278,9 @@ export default function BidangPage() {
         await loadPengaduan(user.bidang_id)
       }
 
-      toast.success('Tanggapan berhasil dikirim! Email notifikasi telah dikirim ke pelapor', {
+      toast.success('Tanggapan berhasil dikirim! Pelapor dapat melihat tanggapan Anda di timeline', {
         duration: 5000,
-        icon: '📧'
+        icon: '💬'
       })
       
       setShowTanggapanModal(false)
@@ -419,9 +443,26 @@ export default function BidangPage() {
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all outline-none"
                 >
                   <option value="">Pilih Status</option>
-                  <option value="di proses">Sedang Diproses</option>
+                  <option value="tindak_lanjut">Tindak Lanjut</option>
                   <option value="selesai">Selesai</option>
                 </select>
+              </div>
+
+              {/* Tanggapan (Optional) */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Tanggapan (Opsional)
+                </label>
+                <textarea
+                  value={tanggapan}
+                  onChange={(e) => setTanggapan(e.target.value)}
+                  placeholder="Berikan tanggapan atau keterangan tambahan untuk pelapor..."
+                  rows={4}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all outline-none resize-none"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  💬 Tanggapan akan ditampilkan di timeline pengaduan
+                </p>
               </div>
 
               {/* Actions */}

@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { 
@@ -28,8 +29,43 @@ import {
   Sparkles,
   User
 } from 'lucide-react'
+import Footer from '@/components/Footer'
+
+interface Stats {
+  totalUsers: number
+  totalPengaduan: number
+  selesai: number
+  avgResponseTime: number
+  satisfaction: number
+}
 
 export default function HomePage() {
+  const [stats, setStats] = useState<Stats>({
+    totalUsers: 0,
+    totalPengaduan: 0,
+    selesai: 0,
+    avgResponseTime: 24,
+    satisfaction: 95
+  })
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    fetchStats()
+  }, [])
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/stats')
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
   return (
     <div className="min-h-screen">
       {/* Navbar */}
@@ -261,12 +297,16 @@ export default function HomePage() {
               {/* Trust Indicators */}
               <div className="flex items-center justify-center lg:justify-start space-x-8 mt-10">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white">1000+</div>
+                  <div className="text-3xl font-bold text-white">
+                    {isLoading ? '...' : `${stats.selesai}+`}
+                  </div>
                   <div className="text-white/70 text-sm">Pengaduan Selesai</div>
                 </div>
                 <div className="w-px h-12 bg-white/30"></div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-white">98%</div>
+                  <div className="text-3xl font-bold text-white">
+                    {isLoading ? '...' : `${stats.satisfaction}%`}
+                  </div>
                   <div className="text-white/70 text-sm">Kepuasan</div>
                 </div>
                 <div className="w-px h-12 bg-white/30"></div>
@@ -426,10 +466,10 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             {[
-              { icon: <Users />, number: "1000+", label: "Pengguna Aktif", color: "from-purple-500 to-pink-500" },
-              { icon: <ClipboardList />, number: "500+", label: "Pengaduan Selesai", color: "from-blue-500 to-cyan-500" },
-              { icon: <Clock />, number: "24", label: "Jam Response", color: "from-orange-500 to-yellow-500" },
-              { icon: <Star />, number: "95%", label: "Kepuasan", color: "from-green-500 to-emerald-500" }
+              { icon: <Users />, number: isLoading ? '...' : `${stats.totalUsers}+`, label: "Pengguna Aktif", color: "from-purple-500 to-pink-500" },
+              { icon: <ClipboardList />, number: isLoading ? '...' : `${stats.selesai}+`, label: "Pengaduan Selesai", color: "from-blue-500 to-cyan-500" },
+              { icon: <Clock />, number: isLoading ? '...' : `${stats.avgResponseTime}`, label: "Jam Response", color: "from-orange-500 to-yellow-500" },
+              { icon: <Star />, number: isLoading ? '...' : `${stats.satisfaction}%`, label: "Kepuasan", color: "from-green-500 to-emerald-500" }
             ].map((stat, index) => (
               <motion.div
                 key={index}
@@ -670,141 +710,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-        {/* Main Footer */}
-        <div className="container mx-auto px-4 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-            {/* Brand Section */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
-                  <ClipboardCheck className="w-7 h-7 text-white" />
-                </div>
-                <span className="text-2xl font-bold">SIPelan</span>
-              </div>
-              <p className="text-gray-400 leading-relaxed">
-                Sistem Pengaduan Layanan Online Naker - Melayani pengaduan masyarakat terkait ketenagakerjaan dengan cepat dan transparan.
-              </p>
-              <div className="flex space-x-3">
-                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-primary rounded-lg flex items-center justify-center transition-all hover:scale-110">
-                  <Facebook className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-primary rounded-lg flex items-center justify-center transition-all hover:scale-110">
-                  <Twitter className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-primary rounded-lg flex items-center justify-center transition-all hover:scale-110">
-                  <Instagram className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-primary rounded-lg flex items-center justify-center transition-all hover:scale-110">
-                  <Youtube className="w-5 h-5" />
-                </a>
-              </div>
-            </div>
-
-            {/* Quick Links */}
-            <div>
-              <h3 className="text-lg font-bold mb-6 text-white">Menu Cepat</h3>
-              <ul className="space-y-3">
-                <li>
-                  <Link href="/" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
-                    <span className="w-1.5 h-1.5 bg-primary-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
-                    <span>Beranda</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/pengaduan" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
-                    <span className="w-1.5 h-1.5 bg-primary-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
-                    <span>Buat Pengaduan</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/tracking" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
-                    <span className="w-1.5 h-1.5 bg-primary-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
-                    <span>Tracking Pengaduan</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/login" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
-                    <span className="w-1.5 h-1.5 bg-primary-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
-                    <span>Login</span>
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Layanan */}
-            <div>
-              <h3 className="text-lg font-bold mb-6 text-white">Layanan Kami</h3>
-              <ul className="space-y-3">
-                <li className="text-gray-400 flex items-start space-x-2">
-                  <ClipboardList className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
-                  <span>Pengaduan Ketenagakerjaan</span>
-                </li>
-                <li className="text-gray-400 flex items-start space-x-2">
-                  <Users className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
-                  <span>Konsultasi Hubungan Industrial</span>
-                </li>
-                <li className="text-gray-400 flex items-start space-x-2">
-                  <FileText className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
-                  <span>Informasi Peraturan Ketenagakerjaan</span>
-                </li>
-                <li className="text-gray-400 flex items-start space-x-2">
-                  <Clock className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" />
-                  <span>Tracking Status Real-time</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Contact Info */}
-            <div>
-              <h3 className="text-lg font-bold mb-6 text-white">Hubungi Kami</h3>
-              <ul className="space-y-4">
-                <li className="flex items-start space-x-3 text-gray-400">
-                  <MapPin className="w-5 h-5 text-primary-500 flex-shrink-0 mt-1" />
-                  <span>Jl. Disnaker No. 123<br />Jakarta Pusat, DKI Jakarta<br />10110</span>
-                </li>
-                <li className="flex items-center space-x-3 text-gray-400">
-                  <Phone className="w-5 h-5 text-primary-500 flex-shrink-0" />
-                  <span>(021) 1234-5678</span>
-                </li>
-                <li className="flex items-center space-x-3 text-gray-400">
-                  <Mail className="w-5 h-5 text-primary-500 flex-shrink-0" />
-                  <span>info@disnaker.go.id</span>
-                </li>
-              </ul>
-              <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10">
-                <p className="text-sm text-gray-400 mb-2">Jam Layanan:</p>
-                <p className="text-white font-semibold">Senin - Jumat</p>
-                <p className="text-gray-400 text-sm">08:00 - 16:00 WIB</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Footer */}
-        <div className="border-t border-white/10">
-          <div className="container mx-auto px-4 py-6">
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <p className="text-gray-400 text-sm text-center md:text-left">
-                &copy; 2024 Dinas Ketenagakerjaan. All rights reserved.
-              </p>
-              <div className="flex items-center space-x-6 text-sm">
-                <Link href="/kebijakan-privasi" className="text-gray-400 hover:text-white transition-colors">
-                  Kebijakan Privasi
-                </Link>
-                <span className="text-gray-600">|</span>
-                <Link href="/syarat-ketentuan" className="text-gray-400 hover:text-white transition-colors">
-                  Syarat & Ketentuan
-                </Link>
-                <span className="text-gray-600">|</span>
-                <Link href="/faq" className="text-gray-400 hover:text-white transition-colors">
-                  FAQ
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   )
 }

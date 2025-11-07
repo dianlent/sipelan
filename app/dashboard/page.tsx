@@ -61,12 +61,15 @@ export default function DashboardPage() {
       return
     }
 
-    // Load data based on role when user is available
+    // Redirect to role-specific dashboard
     if (user) {
-      console.log('✅ Authenticated, loading data')
-      if (user.role === 'bidang') {
-        loadBidangData(user.kode_bidang)
+      console.log('✅ Authenticated, redirecting to role-specific dashboard')
+      if (user.role === 'admin') {
+        router.push('/dashboard/admin')
+      } else if (user.role === 'bidang') {
+        router.push('/dashboard/bidang')
       } else {
+        // For regular users, load their data
         loadUserData(user.id)
       }
     }

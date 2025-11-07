@@ -41,28 +41,28 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
   const statusInfo: Record<string, { title: string; description: string; color: string }> = {
     'masuk': {
       title: 'Pengaduan Masuk',
-      description: 'Pelapor mengisi aduan melalui website',
+      description: 'Pengaduan telah diterima dan dicatat dalam sistem',
       color: 'gray'
     },
     'terverifikasi': {
       title: 'Pengaduan Terverifikasi',
-      description: 'Pengaduan sudah terverifikasi oleh admin',
+      description: 'Pengaduan telah diverifikasi oleh admin dan siap didisposisi',
       color: 'blue'
     },
     'terdisposisi': {
       title: 'Pengaduan Terdisposisi',
-      description: 'Pengaduan sudah dikirim ke Bidang yang terkait',
+      description: 'Pengaduan telah didisposisi ke bidang terkait untuk ditindaklanjuti',
       color: 'orange'
     },
     'tindak_lanjut': {
-      title: 'Pengaduan Tindak Lanjut',
-      description: 'Pengaduan sedang ditindaklanjuti oleh Bidang terkait',
+      title: 'Tanggapan',
+      description: 'Bidang terkait memberikan tanggapan terhadap pengaduan',
       color: 'purple'
     },
     'selesai': {
-      title: 'Pengaduan Selesai',
-      description: 'Pengaduan sudah selesai dan dikirim ke pelapor',
-      color: 'teal'
+      title: 'Selesai',
+      description: 'Pengaduan telah selesai diproses dan ditutup',
+      color: 'green'
     }
   }
 
@@ -128,19 +128,19 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
   }
 
   const getStatusBgColor = (step: TimelineStep) => {
-    if (step.status !== 'completed') return 'bg-gray-200'
+    if (step.status !== 'completed') return 'bg-gray-300'
     
     switch (step.color) {
-      case 'blue':
+      case 'gray':
         return 'bg-gray-400'
-      case 'green':
+      case 'blue':
         return 'bg-blue-500'
-      case 'purple':
-        return 'bg-orange-500'
       case 'orange':
+        return 'bg-orange-500'
+      case 'purple':
         return 'bg-purple-500'
-      case 'emerald':
-        return 'bg-teal-500'
+      case 'green':
+        return 'bg-green-500'
       default:
         return 'bg-gray-400'
     }
@@ -202,10 +202,13 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
 
               {/* Content Column */}
               <div className="flex-1 pb-8">
-                <div className={`inline-block px-4 py-2 rounded-lg text-white font-medium mb-2 ${
+                <div className={`inline-flex items-center space-x-2 px-4 py-2 rounded-lg text-white font-medium mb-2 ${
                   step.status === 'completed' ? bgColor : 'bg-gray-300'
                 }`}>
-                  {step.title}
+                  {step.title === 'Selesai' && step.status === 'completed' && (
+                    <CheckCircle className="w-5 h-5" />
+                  )}
+                  <span>{step.title}</span>
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   {step.description}
@@ -213,18 +216,18 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
                 
                 {/* Show tanggapan if available */}
                 {step.tanggapan && (
-                  <div className="mt-3 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                  <div className="mt-3 bg-purple-50 border-l-4 border-purple-500 p-4 rounded-r-lg">
                     <div className="flex items-start gap-2">
                       <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
                           <span className="text-white text-xs font-bold">💬</span>
                         </div>
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-semibold text-blue-700">Tanggapan Bidang</span>
+                          <span className="text-xs font-semibold text-purple-700">Tanggapan Bidang</span>
                           {step.petugas && (
-                            <span className="text-xs text-blue-600">• {step.petugas}</span>
+                            <span className="text-xs text-purple-600">• {step.petugas}</span>
                           )}
                         </div>
                         <p className="text-sm text-gray-700 leading-relaxed">
@@ -240,32 +243,6 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
         })}
       </div>
 
-      {/* Progress Bar */}
-      <div className="mt-8 pt-8 border-t border-gray-200">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-gray-700">Progress Keseluruhan</span>
-          <span className="text-sm font-bold text-purple-600">
-            {Math.round((timeline.length / 5) * 100)}%
-          </span>
-        </div>
-        <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${(timeline.length / 5) * 100}%` }}
-            transition={{ duration: 1, ease: "easeOut" }}
-            className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 rounded-full"
-          />
-        </div>
-        <div className="flex justify-between mt-2 text-xs text-gray-500">
-          <span>Mulai</span>
-          <span>Selesai</span>
-        </div>
-        <div className="mt-3 text-center">
-          <p className="text-sm text-gray-600">
-            <span className="font-semibold text-purple-600">{timeline.length}</span> dari 5 tahap selesai
-          </p>
-        </div>
-      </div>
     </div>
   )
 }
