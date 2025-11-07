@@ -12,12 +12,19 @@
 - [Tentang Proyek](#-tentang-proyek)
 - [Fitur Utama](#-fitur-utama)
 - [Teknologi](#-teknologi)
-- [Instalasi](#-instalasi)
-- [Penggunaan](#-penggunaan)
+- [Quick Start](#-quick-start)
+- [Setup Database](#-setup-database)
+- [Konfigurasi Email](#-konfigurasi-email)
+- [Instalasi Lengkap](#-instalasi-lengkap)
 - [Struktur Proyek](#-struktur-proyek)
 - [Role & Permission](#-role--permission)
+- [Test Flow](#-test-flow)
 - [API Documentation](#-api-documentation)
-- [Screenshots](#-screenshots)
+- [Troubleshooting](#-troubleshooting)
+- [Migration Guide](#-migration-guide)
+- [Deployment](#-deployment)
+- [Disposisi Flow](#-disposisi-flow)
+- [Features Highlights](#-features-highlights)
 - [Kontribusi](#-kontribusi)
 - [Lisensi](#-lisensi)
 
@@ -38,18 +45,23 @@
 ### 👥 Untuk Masyarakat
 
 - **Pengaduan Online** - Submit pengaduan tanpa perlu datang ke kantor
+- **Pengaduan Anonim** - Opsi untuk mengadu tanpa identitas
 - **Tracking Real-time** - Lacak status pengaduan dengan kode tracking
 - **Timeline Progress** - Lihat progress pengaduan secara visual
-- **Notifikasi Email** - Terima update via email
-- **Upload Bukti** - Lampirkan dokumen pendukung
+- **Notifikasi Email** - Terima update via email otomatis
+- **Upload Bukti** - Lampirkan dokumen pendukung (PDF, gambar)
+- **FAQ Page** - Pertanyaan yang sering diajukan
 
 ### 👨‍💼 Untuk Admin
 
-- **Dashboard Komprehensif** - Overview statistik pengaduan
+- **Dashboard Komprehensif** - Overview statistik pengaduan real-time
 - **Manajemen Pengaduan** - Verifikasi dan disposisi pengaduan
+- **Manajemen User** - Kelola pengguna sistem
+- **Laporan & Statistik** - Charts dan grafik dengan Chart.js
 - **Update Status** - Ubah status pengaduan dengan keterangan
 - **Disposisi ke Bidang** - Teruskan pengaduan ke bidang terkait
-- **Profile Management** - Kelola informasi akun
+- **Pengaturan Sistem** - Konfigurasi SMTP dan preferensi
+- **Responsive Design** - Mobile-friendly admin panel
 
 ### 🏛️ Untuk Bidang
 
@@ -69,13 +81,14 @@
 - **Icons**: [Lucide React](https://lucide.dev/) - Beautiful & consistent icons
 - **Notifications**: [React Hot Toast](https://react-hot-toast.com/) - Lightweight notifications
 
-### Backend (Planned)
+### Backend
 
-- **API**: Express.js / Next.js API Routes
-- **Database**: PostgreSQL / Supabase
+- **Database**: [Supabase](https://supabase.com/) - PostgreSQL database
+- **API**: Next.js API Routes
 - **Authentication**: JWT + bcrypt
-- **File Upload**: Multer
-- **Email**: Nodemailer
+- **File Storage**: Supabase Storage
+- **Email**: [Nodemailer](https://nodemailer.com/) - SMTP email service
+- **Charts**: [Chart.js](https://www.chartjs.org/) + react-chartjs-2
 
 ### Development Tools
 
@@ -84,7 +97,167 @@
 - **Version Control**: Git & GitHub
 - **Deployment**: Vercel / Netlify
 
-## 📦 Instalasi
+## 🚀 Quick Start
+
+### Instalasi Cepat (5 Menit)
+
+```bash
+# 1. Clone & Install
+git clone https://github.com/dianlent/sipelan.git
+cd sipelan
+npm install
+
+# 2. Setup Environment
+cp .env.example .env.local
+# Edit .env.local dengan credentials Anda
+
+# 3. Run Development
+npm run dev
+```
+
+Buka [http://localhost:5000](http://localhost:5000)
+
+**Default Login:**
+- Username: `admin`
+- Password: `admin123`
+
+---
+
+## 🗄️ Setup Database
+
+### 1. Buat Database di Supabase
+
+1. Buka [Supabase](https://supabase.com)
+2. Create New Project
+3. Copy URL dan Keys
+
+### 2. Jalankan Schema SQL
+
+```sql
+-- File: database/schema.sql
+-- Copy & paste ke Supabase SQL Editor
+
+-- Tables: users, pengaduan, pengaduan_status, kategori_pengaduan, bidang, kategori_bidang
+```
+
+### 3. Insert Data Awal
+
+```sql
+-- Admin User
+INSERT INTO users (username, email, password_hash, nama_lengkap, role)
+VALUES ('admin', 'admin@disnaker.go.id', '$2a$10$...', 'Administrator', 'admin');
+
+-- Kategori & Bidang
+INSERT INTO kategori_bidang (kode, nama_kategori) VALUES
+('PHI', 'Pengawasan & Hubungan Industrial'),
+('NKT', 'Pelatihan & Produktivitas');
+```
+
+### 4. Setup Storage Bucket
+
+```sql
+-- Buat bucket 'pengaduan-files'
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('pengaduan-files', 'pengaduan-files', true);
+
+-- Set policy untuk public access
+CREATE POLICY "Public Access" ON storage.objects
+FOR SELECT USING (bucket_id = 'pengaduan-files');
+```
+
+### 5. Setup Trigger untuk Auto-Generate Kode
+
+```sql
+-- Function untuk generate kode pengaduan
+CREATE OR REPLACE FUNCTION generate_kode_pengaduan()
+RETURNS TRIGGER AS $$
+DECLARE
+  new_kode TEXT;
+  year_part TEXT;
+  counter INTEGER;
+BEGIN
+  year_part := TO_CHAR(CURRENT_DATE, 'YYYY');
+  
+  -- Get next counter
+  SELECT COALESCE(MAX(CAST(SUBSTRING(kode_pengaduan FROM 10) AS INTEGER)), 0) + 1
+  INTO counter
+  FROM pengaduan
+  WHERE kode_pengaduan LIKE 'ADU-' || year_part || '-%';
+  
+  -- Generate kode
+  new_kode := 'ADU-' || year_part || '-' || LPAD(counter::TEXT, 4, '0');
+  NEW.kode_pengaduan := new_kode;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger
+CREATE TRIGGER set_kode_pengaduan
+BEFORE INSERT ON pengaduan
+FOR EACH ROW
+WHEN (NEW.kode_pengaduan IS NULL)
+EXECUTE FUNCTION generate_kode_pengaduan();
+```
+
+### 6. Data Consistency Check
+
+```sql
+-- Check duplicate kode_pengaduan
+SELECT kode_pengaduan, COUNT(*)
+FROM pengaduan
+GROUP BY kode_pengaduan
+HAVING COUNT(*) > 1;
+
+-- Fix duplicate if exists
+DELETE FROM pengaduan
+WHERE id NOT IN (
+  SELECT MIN(id)
+  FROM pengaduan
+  GROUP BY kode_pengaduan
+);
+```
+
+---
+
+## 📧 Konfigurasi Email
+
+### Setup SMTP (Gmail)
+
+1. **Enable 2-Factor Authentication** di Google Account
+2. **Generate App Password**:
+   - Google Account → Security → 2-Step Verification → App passwords
+   - Select app: Mail
+   - Select device: Other (Custom name)
+   - Copy 16-digit password
+
+3. **Update .env.local**:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-16-digit-app-password
+SMTP_FROM="SIPelan" <noreply@sipelan.go.id>
+```
+
+### Email Triggers
+
+- ✅ **Pengaduan Created** → Email konfirmasi + kode tracking
+- ✅ **Status Updated** → Email notifikasi perubahan status
+- ✅ **Pengaduan Selesai** → Email final dengan hasil
+
+### Test Email
+
+```bash
+# Buat pengaduan baru dengan email valid
+# Check inbox untuk konfirmasi email
+```
+
+---
+
+## 📦 Instalasi Lengkap
 
 ### Prerequisites
 
@@ -114,17 +287,22 @@ yarn install
 Buat file `.env.local` di root directory:
 
 ```env
-# Database (jika menggunakan)
-DATABASE_URL=your_database_url
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_KEY=your_service_key
 
-# Authentication
-JWT_SECRET=your_jwt_secret
+# JWT
+JWT_SECRET=your_jwt_secret_key
+JWT_EXPIRES_IN=7d
 
-# Email (jika menggunakan)
+# SMTP Email Configuration
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
+SMTP_SECURE=false
 SMTP_USER=your_email@gmail.com
 SMTP_PASS=your_app_password
+SMTP_FROM="SIPelan" <noreply@sipelan.go.id>
 
 # App URL
 NEXT_PUBLIC_APP_URL=http://localhost:5000
@@ -194,21 +372,36 @@ netlify deploy --prod
 sipelan/
 ├── app/                      # Next.js App Router
 │   ├── admin/               # Admin dashboard
-│   ├── bidang/              # Bidang dashboard
-│   ├── dashboard/           # User dashboard
+│   │   ├── pengaduan/       # Manajemen pengaduan
+│   │   ├── reports/         # Laporan & statistik
+│   │   ├── settings/        # Pengaturan sistem
+│   │   ├── users/           # Manajemen user
+│   │   └── page.tsx         # Admin dashboard
+│   ├── api/                 # API Routes
+│   │   ├── auth/            # Authentication endpoints
+│   │   ├── pengaduan/       # Pengaduan endpoints
+│   │   ├── stats/           # Statistics endpoints
+│   │   └── users/           # User management endpoints
+│   ├── faq/                 # FAQ page
 │   ├── login/               # Login page
 │   ├── pengaduan/           # Submit pengaduan
-│   ├── riwayat/             # Riwayat pengaduan
-│   ├── settings/            # User settings
+│   ├── privacy/             # Kebijakan privasi
+│   ├── terms/               # Syarat & ketentuan
 │   ├── tracking/            # Track pengaduan
 │   ├── layout.tsx           # Root layout
 │   └── page.tsx             # Homepage
 ├── components/              # Reusable components
-│   └── PengaduanTimeline.tsx
+│   ├── AdminSidebar.tsx     # Admin sidebar (responsive)
+│   ├── Footer.tsx           # Footer component
+│   └── PengaduanTimeline.tsx # Timeline component
 ├── contexts/                # React contexts
 │   └── AuthContext.tsx      # Authentication context
+├── database/                # Database schema
+│   └── schema.sql           # PostgreSQL schema
+├── lib/                     # Utility libraries
+│   ├── email.ts             # Email utilities
+│   └── supabase.ts          # Supabase client
 ├── public/                  # Static assets
-├── styles/                  # Global styles
 ├── .env.local              # Environment variables
 ├── next.config.js          # Next.js configuration
 ├── tailwind.config.js      # Tailwind configuration
@@ -219,36 +412,236 @@ sipelan/
 ## 👥 Role & Permission
 
 ### 1. Public (Masyarakat)
-
-- ✅ Submit pengaduan
-- ✅ Track pengaduan dengan kode
-- ✅ Lihat timeline progress
-- ❌ Tidak perlu login
+- ✅ Submit pengaduan | ✅ Track dengan kode | ✅ Timeline progress | ❌ No login required
 
 ### 2. User (Pelapor Terdaftar)
-
-- ✅ Semua akses Public
-- ✅ Dashboard pribadi
-- ✅ Riwayat pengaduan
-- ✅ Notifikasi email
-- ✅ Profile management
+- ✅ All Public access | ✅ Dashboard pribadi | ✅ Riwayat | ✅ Email notif | ✅ Profile
 
 ### 3. Bidang (Staff Bidang)
-
-- ✅ Dashboard bidang
-- ✅ Lihat pengaduan yang didisposisi
-- ✅ Update progress tindak lanjut
-- ✅ Upload dokumen hasil
-- ✅ Komunikasi dengan admin
+- ✅ Dashboard bidang | ✅ Pengaduan terdisposisi | ✅ Update progress | ✅ Upload hasil
 
 ### 4. Admin (Administrator)
+- ✅ Full access | ✅ Verifikasi | ✅ Disposisi | ✅ Update status | ✅ User management | ✅ Reports
 
-- ✅ Full access ke semua pengaduan
-- ✅ Verifikasi pengaduan baru
-- ✅ Disposisi ke bidang
-- ✅ Update status pengaduan
-- ✅ Manajemen user
-- ✅ Generate laporan
+---
+
+## 🧪 Test Flow
+
+### 1. Test Pengaduan (Public)
+```bash
+1. Buka /pengaduan
+2. Isi form lengkap
+3. Upload file (optional)
+4. Submit → Dapat kode tracking (ADU-2025-XXXX)
+5. Buka /tracking → Input kode
+6. Lihat timeline progress
+```
+
+### 2. Test Admin Flow
+```bash
+1. Login sebagai admin
+2. Dashboard → Lihat stats
+3. Pengaduan → Verifikasi pengaduan baru
+4. Disposisi → Pilih bidang
+5. Update status → Masuk → Terverifikasi → Terdisposisi
+6. Check email pelapor (jika tidak anonim)
+```
+
+### 3. Test Email Notification
+```bash
+1. Buat pengaduan dengan email valid
+2. Check inbox → Email konfirmasi
+3. Admin update status
+4. Check inbox → Email update status
+5. Admin set status "selesai"
+6. Check inbox → Email final
+```
+
+### 4. Test Responsive Design
+```bash
+# Desktop (> 1024px)
+- Sidebar visible & collapsible
+- 4-column grids
+- Full features
+
+# Tablet (640-1024px)
+- Sidebar visible
+- 2-column grids
+- Comfortable spacing
+
+# Mobile (< 640px)
+- Hamburger menu
+- 1-column stack
+- Horizontal scroll tables
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Database Issues
+
+**Error: "relation does not exist"**
+```sql
+-- Jalankan schema.sql lengkap di Supabase SQL Editor
+-- Pastikan semua tables ter-create
+```
+
+**Error: "duplicate key value violates unique constraint"**
+```sql
+-- 1. Check trigger exists
+SELECT * FROM pg_trigger WHERE tgname = 'set_kode_pengaduan';
+
+-- 2. Recreate trigger if missing
+CREATE OR REPLACE FUNCTION generate_kode_pengaduan() ...
+-- (See Setup Database section)
+
+-- 3. Fix existing duplicates
+DELETE FROM pengaduan
+WHERE id NOT IN (
+  SELECT MIN(id) FROM pengaduan GROUP BY kode_pengaduan
+);
+
+-- 4. Reset sequence
+SELECT setval('pengaduan_id_seq', (SELECT MAX(id) FROM pengaduan));
+```
+
+### Email Issues
+
+**Email tidak terkirim**
+```env
+# Check SMTP credentials di .env.local
+# Pastikan App Password sudah benar (16 digit tanpa spasi)
+# Test dengan: console.log di lib/email.ts
+```
+
+**Email masuk spam**
+```bash
+# Setup SPF & DKIM records di domain
+# Atau gunakan email service (SendGrid, Mailgun)
+```
+
+### Bidang Dashboard Issues
+
+**Pengaduan tidak muncul di Bidang Dashboard**
+```sql
+-- 1. Verify user bidang
+SELECT id, username, kode_bidang, role FROM users WHERE role = 'bidang';
+
+-- 2. Check pengaduan assignment
+SELECT id, kode_pengaduan, kode_bidang, status 
+FROM pengaduan 
+WHERE kode_bidang = 'YOUR_KODE_BIDANG';
+
+-- 3. Update if needed
+UPDATE pengaduan 
+SET kode_bidang = 'CORRECT_KODE'
+WHERE id = pengaduan_id;
+```
+
+**Cannot update status**
+```typescript
+// 1. Check role & kode_bidang
+const user = await getCurrentUser();
+console.log({ role: user.role, kode_bidang: user.kode_bidang });
+
+// 2. Verify API endpoint
+PUT /api/pengaduan/[id]/status
+Body: { status: 'tindak_lanjut', kode_bidang: user.kode_bidang }
+
+// 3. Check response
+if (!response.success) {
+  console.error(response.message);
+}
+```
+
+### Session Issues
+
+**Auto logout**
+```typescript
+// Check JWT_EXPIRES_IN di .env.local
+// Default: 7d (7 hari)
+// Increase jika perlu: JWT_EXPIRES_IN=30d
+```
+
+**Token invalid**
+```bash
+# Clear localStorage
+localStorage.clear()
+# Login ulang
+```
+
+### Build/Deploy Issues
+
+**Vercel build failed**
+```bash
+# Check environment variables di Vercel dashboard
+# Pastikan semua NEXT_PUBLIC_* variables ada
+# Check build logs untuk error spesifik
+```
+
+**Chart.js not rendering**
+```bash
+# Pastikan Chart.js registered di component
+# Check browser console untuk errors
+# Verify data format sesuai Chart.js docs
+```
+
+---
+
+## 🔄 Migration Guide
+
+### From Old Version to v2.0
+
+#### 1. Database Migration
+```sql
+-- Add new columns
+ALTER TABLE pengaduan ADD COLUMN IF NOT EXISTS anonim BOOLEAN DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+-- Update existing data
+UPDATE pengaduan SET anonim = false WHERE anonim IS NULL;
+UPDATE users SET is_active = true WHERE is_active IS NULL;
+```
+
+#### 2. Environment Variables
+```env
+# Old
+DATABASE_URL=...
+
+# New (Supabase)
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_KEY=...
+```
+
+#### 3. API Changes
+```typescript
+// Old
+POST /api/pengaduan
+Response: { kode_tracking: string }
+
+// New
+POST /api/pengaduan
+Response: { success: boolean, data: { kode_pengaduan: string } }
+```
+
+#### 4. Component Updates
+```typescript
+// Old: Recharts
+import { LineChart } from 'recharts'
+
+// New: Chart.js
+import { Line } from 'react-chartjs-2'
+```
+
+### Breaking Changes
+- ❌ Recharts removed → Use Chart.js
+- ❌ Direct database access → Use Supabase client
+- ❌ Old email system → Use lib/email.ts
+- ✅ New responsive sidebar
+- ✅ Email notifications
+- ✅ Enhanced admin panel
 
 ## 📊 API Documentation
 
@@ -258,11 +651,12 @@ sipelan/
 // Login
 POST /api/auth/login
 Body: { username: string, password: string }
-Response: { user: User, token: string }
+Response: { success: boolean, user: User, token: string }
 
 // Logout
 POST /api/auth/logout
 Headers: { Authorization: Bearer <token> }
+Response: { success: boolean, message: string }
 ```
 
 ### Pengaduan
@@ -270,32 +664,138 @@ Headers: { Authorization: Bearer <token> }
 ```typescript
 // Create Pengaduan
 POST /api/pengaduan
-Body: { judul: string, isi: string, kategori: string, ... }
-Response: { pengaduan: Pengaduan, kode_tracking: string }
+Body: FormData {
+  judul_pengaduan: string
+  isi_pengaduan: string
+  kategori_id: number
+  nama_pelapor?: string
+  email_pelapor?: string
+  no_telepon?: string
+  nik?: string
+  anonim: boolean
+  lampiran?: File
+}
+Response: { success: boolean, data: { kode_pengaduan: string, ... } }
 
 // Get Pengaduan by Kode
-GET /api/pengaduan/:kode
-Response: { pengaduan: Pengaduan, timeline: Timeline[] }
+GET /api/pengaduan?kode=ADU-2025-XXXX
+Response: { success: boolean, data: Pengaduan, timeline: Timeline[] }
+
+// Get All Pengaduan (Admin)
+GET /api/pengaduan?page=1&limit=10&status=masuk
+Headers: { Authorization: Bearer <token> }
+Response: { success: boolean, data: Pengaduan[], total: number }
 
 // Update Status
 PUT /api/pengaduan/:id/status
-Body: { status: string, keterangan: string }
+Body: { status: string, kode_bidang?: string }
 Headers: { Authorization: Bearer <token> }
+Response: { success: boolean, message: string }
+```
+
+### Statistics
+
+```typescript
+// Get Statistics
+GET /api/stats?range=6months&format=simple
+Response: {
+  success: boolean
+  data: {
+    totalPengaduan: number
+    selesai: number
+    proses: number
+    pengaduanByMonth: Array<{ month: string, count: number }>
+    pengaduanByStatus: Array<{ status: string, count: number, color: string }>
+    pengaduanByKategori: Array<{ kategori: string, count: number }>
+    pengaduanByBidang: Array<{ bidang: string, count: number }>
+  }
+}
+```
+
+### Users
+
+```typescript
+// Get All Users (Admin)
+GET /api/users
+Headers: { Authorization: Bearer <token> }
+Response: { success: boolean, data: User[] }
+
+// Create User (Admin)
+POST /api/users
+Body: { username: string, email: string, password: string, role: string }
+Headers: { Authorization: Bearer <token> }
+Response: { success: boolean, data: User }
 ```
 
 ## 📸 Screenshots
 
 ### Homepage
-Modern landing page dengan hero section dan fitur unggulan
+- Modern landing page dengan hero section
+- Statistik real-time
+- Fitur unggulan
+- Call-to-action buttons
+- Responsive footer
 
 ### Dashboard Admin
-Comprehensive dashboard dengan statistik dan manajemen pengaduan
+- Comprehensive statistics cards
+- Charts dengan Chart.js (Line, Doughnut, Bar)
+- Manajemen pengaduan
+- Responsive sidebar dengan hamburger menu
+- Time range filter
 
 ### Tracking Page
-Real-time tracking dengan timeline progress yang visual
+- Real-time tracking dengan kode pengaduan
+- Timeline progress yang visual
+- Status badges dengan warna
+- Detail pengaduan lengkap
 
-### Timeline Progress
-Dynamic timeline yang menampilkan setiap tahap pengaduan
+### Admin Pages
+- **Users Management**: Table dengan search & filter
+- **Reports**: Charts & grafik statistik
+- **Settings**: Tabs untuk profil, keamanan, notifikasi, sistem
+- **Pengaduan**: List dengan disposisi modal
+
+## 🎨 Design Features
+
+### Responsive Design
+- ✅ **Mobile-First Approach** - Optimized untuk semua device
+- ✅ **Breakpoints**: Mobile (< 640px), Tablet (640-1024px), Desktop (> 1024px)
+- ✅ **Mobile Sidebar** - Hamburger menu dengan slide-in animation
+- ✅ **Responsive Tables** - Horizontal scroll di mobile
+- ✅ **Adaptive Grids** - 1 → 2 → 4 columns
+- ✅ **Touch-Friendly** - Minimum 44x44px tap targets
+
+### UI/UX Features
+- ✅ **Smooth Animations** - Framer Motion untuk transitions
+- ✅ **Loading States** - Skeleton screens & spinners
+- ✅ **Toast Notifications** - React Hot Toast
+- ✅ **Color-Coded Status** - Visual status indicators
+- ✅ **Gradient Backgrounds** - Modern aesthetic
+- ✅ **Icon System** - Lucide React icons
+
+## 📧 Email Notifications
+
+### Automated Email System
+- ✅ **Pengaduan Created** - Email konfirmasi dengan kode tracking
+- ✅ **Status Updated** - Email notifikasi setiap perubahan status
+- ✅ **Professional Templates** - HTML email dengan branding
+- ✅ **SMTP Configuration** - Nodemailer dengan Gmail/SMTP
+
+### Email Templates
+```typescript
+// Pengaduan Created Email
+- Kode tracking (highlighted)
+- Detail pengaduan
+- Langkah selanjutnya
+- Link tracking
+- Contact information
+
+// Status Update Email
+- Status lama → Status baru (visual)
+- Detail perubahan
+- Timeline update
+- Link detail pengaduan
+```
 
 ## 🤝 Kontribusi
 
@@ -327,13 +827,170 @@ Proyek ini dilisensikan di bawah [MIT License](LICENSE).
 - Email: info@disnaker.patikab.go.id
 - GitHub: [@dianlent](https://github.com/dianlent)
 
+## 🚀 Deployment
+
+### Deploy to Vercel (Recommended)
+
+#### 1. Persiapan
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Login
+vercel login
+```
+
+#### 2. Setup Environment Variables
+Di Vercel Dashboard → Settings → Environment Variables, tambahkan:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_KEY=your_service_key
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRES_IN=7d
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_app_password
+SMTP_FROM="SIPelan" <noreply@sipelan.go.id>
+NEXT_PUBLIC_APP_URL=https://your-domain.vercel.app
+```
+
+#### 3. Deploy
+```bash
+# Development deploy
+vercel
+
+# Production deploy
+vercel --prod
+```
+
+#### 4. Custom Domain (Optional)
+```bash
+# Add domain
+vercel domains add your-domain.com
+
+# Verify DNS
+# Add CNAME record: your-domain.com → cname.vercel-dns.com
+```
+
+### Deploy to Netlify
+
+```bash
+# Install Netlify CLI
+npm install -g netlify-cli
+
+# Login
+netlify login
+
+# Deploy
+netlify deploy --prod
+```
+
+### Post-Deployment Checklist
+
+- ✅ Environment variables configured
+- ✅ Database schema deployed
+- ✅ Storage bucket created
+- ✅ SMTP credentials working
+- ✅ Custom domain configured (if any)
+- ✅ SSL certificate active
+- ✅ Test all features
+- ✅ Monitor error logs
+
+---
+
+## 📋 Disposisi Flow
+
+### Alur Disposisi Pengaduan
+
+```
+1. MASUK (Blue)
+   ↓
+   Admin verifikasi
+   ↓
+2. TERVERIFIKASI (Green)
+   ↓
+   Admin disposisi ke bidang
+   ↓
+3. TERDISPOSISI (Orange)
+   ↓
+   Bidang tindak lanjut
+   ↓
+4. TINDAK_LANJUT (Purple)
+   ↓
+   Bidang selesaikan
+   ↓
+5. SELESAI (Green)
+```
+
+### Admin Actions
+
+```typescript
+// 1. Verifikasi
+PUT /api/pengaduan/:id/status
+Body: { status: 'terverifikasi' }
+
+// 2. Disposisi
+PUT /api/pengaduan/:id/status
+Body: { 
+  status: 'terdisposisi',
+  kode_bidang: 'PHI' // atau 'NKT'
+}
+
+// Email notification sent automatically
+```
+
+### Bidang Actions
+
+```typescript
+// 1. Tindak Lanjut
+PUT /api/pengaduan/:id/status
+Body: { status: 'tindak_lanjut' }
+
+// 2. Selesai
+PUT /api/pengaduan/:id/status
+Body: { status: 'selesai' }
+
+// Email notification sent to reporter
+```
+
+---
+
+## 🚀 Features Highlights
+
+### ✅ Completed Features
+1. **Authentication System** - JWT-based login/logout
+2. **Pengaduan Management** - Full CRUD operations
+3. **Status Tracking** - Real-time dengan timeline
+4. **Email Notifications** - Automated dengan Nodemailer
+5. **Admin Dashboard** - Statistics & charts
+6. **Responsive Design** - Mobile, tablet, desktop
+7. **File Upload** - Supabase Storage integration
+8. **User Management** - Admin panel untuk users
+9. **Reports & Analytics** - Chart.js visualization
+10. **FAQ System** - Accordion UI
+11. **Privacy & Terms Pages** - Legal pages
+
+### 🔄 Status Flow
+```
+Masuk → Terverifikasi → Terdisposisi → Tindak Lanjut → Selesai
+  ↓         ↓              ↓              ↓            ↓
+ Blue    Green         Orange         Purple       Green
+```
+
 ## 🙏 Acknowledgments
 
-- Next.js Team untuk framework yang luar biasa
-- Vercel untuk hosting yang mudah
-- Tailwind CSS untuk styling yang efisien
-- Framer Motion untuk animasi yang smooth
-- Lucide untuk icon set yang indah
+- **Next.js Team** - Amazing React framework
+- **Vercel** - Easy deployment platform
+- **Supabase** - Backend as a Service
+- **Tailwind CSS** - Utility-first CSS
+- **Framer Motion** - Smooth animations
+- **Chart.js** - Beautiful charts
+- **Lucide** - Icon library
+- **Nodemailer** - Email service
 
 ---
 

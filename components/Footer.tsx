@@ -140,13 +140,13 @@ export default function Footer() {
               <span className="hidden md:inline"> All rights reserved.</span>
             </p>
             <div className="flex space-x-6 text-sm text-gray-400">
-              <Link href="#" className="hover:text-purple-400 transition-colors">
+              <Link href="/privacy" className="hover:text-purple-400 transition-colors">
                 Kebijakan Privasi
               </Link>
-              <Link href="#" className="hover:text-purple-400 transition-colors">
+              <Link href="/terms" className="hover:text-purple-400 transition-colors">
                 Syarat & Ketentuan
               </Link>
-              <Link href="#" className="hover:text-purple-400 transition-colors">
+              <Link href="/faq" className="hover:text-purple-400 transition-colors">
                 FAQ
               </Link>
             </div>

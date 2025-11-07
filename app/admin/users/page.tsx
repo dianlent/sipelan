@@ -32,8 +32,18 @@ export default function UsersManagementPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingData, setIsLoadingData] = useState(true)
+  
+  const [editForm, setEditForm] = useState({
+    nama_lengkap: '',
+    email: '',
+    username: '',
+    role: 'masyarakat',
+    password: ''
+  })
 
   useEffect(() => {
     if (authLoading) return
@@ -119,6 +129,71 @@ export default function UsersManagementPage() {
       masyarakat: '👤 Masyarakat'
     }
     return labels[role as keyof typeof labels] || role
+  }
+
+  const handleEdit = (user: User) => {
+    setSelectedUser(user)
+    setEditForm({
+      nama_lengkap: user.nama_lengkap,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      password: '' // Password kosong, hanya diisi jika ingin diubah
+    })
+    setShowEditModal(true)
+  }
+
+  const handleUpdateUser = async () => {
+    if (!selectedUser) return
+    
+    if (!editForm.nama_lengkap || !editForm.email || !editForm.username) {
+      toast.error('Semua field harus diisi')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const updateData: any = {
+        nama_lengkap: editForm.nama_lengkap,
+        email: editForm.email,
+        username: editForm.username,
+        role: editForm.role
+      }
+
+      // Hanya kirim password jika diisi
+      if (editForm.password) {
+        updateData.password = editForm.password
+      }
+
+      const response = await fetch(`/api/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData)
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast.success('User berhasil diupdate')
+        setShowEditModal(false)
+        setSelectedUser(null)
+        setEditForm({
+          nama_lengkap: '',
+          email: '',
+          username: '',
+          role: 'masyarakat',
+          password: ''
+        })
+        loadUsers()
+      } else {
+        toast.error(result.message || 'Gagal update user')
+      }
+    } catch (error) {
+      console.error('Error updating user:', error)
+      toast.error('Terjadi kesalahan saat update user')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (authLoading) {
@@ -311,12 +386,18 @@ export default function UsersManagementPage() {
                       <td className="py-4 px-4">
                         <div className="flex items-center justify-end space-x-2">
                           <button
+                            onClick={() => handleEdit(user)}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             title="Edit"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
+                            onClick={() => {
+                              if (confirm('Yakin ingin menghapus user ini?')) {
+                                toast.error('Fitur hapus belum diimplementasikan')
+                              }
+                            }}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Hapus"
                           >
@@ -342,6 +423,101 @@ export default function UsersManagementPage() {
           </div>
         </div>
       </div>
+
+      {/* Edit User Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Edit User</h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Nama Lengkap
+                </label>
+                <input
+                  type="text"
+                  value={editForm.nama_lengkap}
+                  onChange={(e) => setEditForm({ ...editForm, nama_lengkap: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  value={editForm.username}
+                  onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Role
+                </label>
+                <select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="masyarakat">Masyarakat</option>
+                  <option value="bidang">Staff Bidang</option>
+                  <option value="admin">Administrator</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password Baru (Kosongkan jika tidak ingin mengubah)
+                </label>
+                <input
+                  type="password"
+                  value={editForm.password}
+                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                  placeholder="Masukkan password baru"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowEditModal(false)
+                  setSelectedUser(null)
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                disabled={isLoading}
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleUpdateUser}
+                disabled={isLoading}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
