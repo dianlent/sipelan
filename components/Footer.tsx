@@ -117,7 +117,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center space-x-3 text-sm text-gray-400">
                 <Mail className="w-5 h-5 text-purple-400 flex-shrink-0" />
-                <span>info@disnaker.go.id</span>
+                <span>disnakerpati@gmail.com</span>
               </li>
             </ul>
             <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/10">
