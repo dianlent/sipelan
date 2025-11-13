@@ -4,6 +4,25 @@ import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { SpeedInsights } from "@vercel/speed-insights/next"
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en">
+      <head>
+        <title>Next.js</title>
+      </head>
+      <body>
+        {children}
+        <SpeedInsights />
+      </body>
+    </html>
+  );
+}
+
 const poppins = Poppins({ 
   weight: ['300', '400', '500', '600', '700', '800'],
   subsets: ['latin'],
