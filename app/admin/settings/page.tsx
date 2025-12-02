@@ -72,12 +72,44 @@ export default function SettingsPage() {
       smtp_pass: ''
     },
     recaptcha: {
-      site_key: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
+      site_key: '',
       secret_key: '',
-      enabled: true,
+      enabled: false,
       score_threshold: 0.5
     }
   })
+
+  // Load reCAPTCHA settings from database
+  useEffect(() => {
+    const loadRecaptchaSettings = async () => {
+      try {
+        const response = await fetch('/api/settings', {
+          credentials: 'include'
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.data) {
+            setSettings(prev => ({
+              ...prev,
+              recaptcha: {
+                enabled: data.data.recaptcha_enabled || false,
+                site_key: data.data.recaptcha_site_key || '',
+                secret_key: data.data.recaptcha_secret_key || '',
+                score_threshold: data.data.recaptcha_score_threshold || 0.5
+              }
+            }))
+          }
+        }
+      } catch (error) {
+        console.error('Error loading reCAPTCHA settings:', error)
+      }
+    }
+
+    if (user && user.role === 'admin') {
+      loadRecaptchaSettings()
+    }
+  }, [user])
 
   useEffect(() => {
     if (authLoading) return
@@ -185,11 +217,31 @@ export default function SettingsPage() {
         }
       }
       
-      // TODO: API call to save reCAPTCHA settings to .env or database
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success('Pengaturan reCAPTCHA berhasil disimpan')
-      toast('Restart aplikasi untuk menerapkan perubahan', { icon: 'ℹ️', duration: 5000 })
+      // Save to database
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          settings: {
+            recaptcha_enabled: settings.recaptcha.enabled,
+            recaptcha_site_key: settings.recaptcha.site_key,
+            recaptcha_secret_key: settings.recaptcha.secret_key,
+            recaptcha_score_threshold: settings.recaptcha.score_threshold
+          }
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Pengaturan reCAPTCHA berhasil disimpan')
+        toast('reCAPTCHA akan aktif dalam beberapa detik', { icon: 'ℹ️', duration: 3000 })
+      } else {
+        toast.error(data.message || 'Gagal menyimpan pengaturan')
+      }
     } catch (error) {
+      console.error('Save reCAPTCHA error:', error)
       toast.error('Gagal menyimpan pengaturan reCAPTCHA')
     } finally {
       setIsLoading(false)
