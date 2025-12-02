@@ -7,7 +7,11 @@ import {
   Send, 
   RefreshCw, 
   CheckCheck,
-  Clock
+  Clock,
+  Paperclip,
+  Download,
+  Image as ImageIcon,
+  FileIcon
 } from 'lucide-react'
 
 interface TimelineStep {
@@ -20,6 +24,8 @@ interface TimelineStep {
   color: string
   tanggapan?: string
   petugas?: string
+  file_url?: string
+  bidang_nama?: string
 }
 
 interface PengaduanTimelineProps {
@@ -30,10 +36,13 @@ interface PengaduanTimelineProps {
     created_at: string
     tanggapan?: string
     petugas?: string
+    file_url?: string
+    bidang_nama?: string
   }>
+  bidangNama?: string
 }
 
-export default function PengaduanTimeline({ currentStatus, timeline = [] }: PengaduanTimelineProps) {
+export default function PengaduanTimeline({ currentStatus, timeline = [], bidangNama }: PengaduanTimelineProps) {
   const statusOrder = ['masuk', 'terverifikasi', 'terdisposisi', 'tindak_lanjut', 'selesai']
   const currentIndex = statusOrder.indexOf(currentStatus)
 
@@ -66,26 +75,63 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
     }
   }
 
-  // Build dynamic steps from actual timeline data
-  const steps: TimelineStep[] = timeline.map((item, index) => {
-    const info = statusInfo[item.status] || {
-      title: item.status,
-      description: item.keterangan,
-      color: 'gray'
+  // Build complete timeline with all statuses
+  const steps: TimelineStep[] = statusOrder.map((statusKey, index) => {
+    const info = statusInfo[statusKey]
+    
+    // Find matching timeline item for this status
+    const timelineItem = timeline.find(item => item.status === statusKey)
+    
+    // For "Tanggapan" status, also look for tanggapan in tindak_lanjut or selesai
+    let tanggapanData = timelineItem
+    if (statusKey === 'tindak_lanjut' && !timelineItem?.tanggapan) {
+      // Look for tanggapan in any timeline item with tanggapan field
+      tanggapanData = timeline.find(item => item.tanggapan) || timelineItem
+    }
+    
+    // Determine step status
+    let stepStatus: 'completed' | 'current' | 'pending'
+    if (index < currentIndex) {
+      stepStatus = 'completed'
+    } else if (index === currentIndex) {
+      stepStatus = 'current'
+    } else {
+      stepStatus = 'pending'
+    }
+
+    // Custom description for terdisposisi with bidang name
+    let description = timelineItem?.keterangan || info.description
+    if (statusKey === 'terdisposisi' && bidangNama) {
+      description = `Pengaduan telah didisposisi ke Bidang ${bidangNama}`
     }
 
     return {
       id: index + 1,
       title: info.title,
-      description: item.keterangan || info.description,
-      status: index === timeline.length - 1 ? 'current' : 'completed',
+      description: description,
+      status: stepStatus,
       icon: <CheckCircle className="w-6 h-6" />,
       color: info.color,
-      date: item.created_at,
-      tanggapan: item.tanggapan,
-      petugas: item.petugas
+      date: timelineItem?.created_at,
+      tanggapan: tanggapanData?.tanggapan,
+      petugas: tanggapanData?.petugas,
+      file_url: tanggapanData?.file_url,
+      bidang_nama: timelineItem?.bidang_nama || bidangNama
     }
   })
+
+  const getFileExtension = (url: string) => {
+    return url.split('.').pop()?.toLowerCase() || ''
+  }
+
+  const isImageFile = (url: string) => {
+    const ext = getFileExtension(url)
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)
+  }
+
+  const getFileName = (url: string) => {
+    return url.split('/').pop() || 'file'
+  }
 
   const getStepColor = (step: TimelineStep) => {
     if (step.status === 'completed') {
@@ -233,6 +279,59 @@ export default function PengaduanTimeline({ currentStatus, timeline = [] }: Peng
                         <p className="text-sm text-gray-700 leading-relaxed">
                           {step.tanggapan}
                         </p>
+                        
+                        {/* Show file attachment if available */}
+                        {step.file_url && (
+                          <div className="mt-3 pt-3 border-t border-purple-200">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Paperclip className="w-4 h-4 text-purple-600" />
+                              <span className="text-xs font-semibold text-purple-700">Lampiran:</span>
+                            </div>
+                            
+                            {isImageFile(step.file_url) ? (
+                              // Image preview
+                              <div className="space-y-2">
+                                <div className="relative rounded-lg overflow-hidden border-2 border-purple-200 bg-white">
+                                  <img 
+                                    src={step.file_url} 
+                                    alt="Lampiran"
+                                    className="w-full max-h-64 object-contain"
+                                  />
+                                </div>
+                                <a
+                                  href={step.file_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 px-3 py-2 bg-purple-600 text-white text-xs font-medium rounded-lg hover:bg-purple-700 transition-colors"
+                                >
+                                  <Download className="w-4 h-4" />
+                                  <span>Download Gambar</span>
+                                </a>
+                              </div>
+                            ) : (
+                              // Document link
+                              <a
+                                href={step.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 p-3 bg-white border-2 border-purple-200 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-all group"
+                              >
+                                <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                                  <FileIcon className="w-5 h-5 text-purple-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {getFileName(step.file_url)}
+                                  </p>
+                                  <p className="text-xs text-gray-500 uppercase">
+                                    {getFileExtension(step.file_url)} file
+                                  </p>
+                                </div>
+                                <Download className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                              </a>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

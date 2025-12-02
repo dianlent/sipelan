@@ -1,9 +1,12 @@
 {
   "/login/page": "app/login/page.js",
-  "/register/page": "app/register/page.js",
-  "/pengaduan/page": "app/pengaduan/page.js",
+  "/tracking/page": "app/tracking/page.js",
   "/admin/page": "app/admin/page.js",
-  "/admin/settings/page": "app/admin/settings/page.js",
+  "/bidang/page": "app/bidang/page.js",
+  "/page": "app/page.js",
+  "/api/pengaduan/route": "app/api/pengaduan/route.js",
+  "/api/stats/route": "app/api/stats/route.js",
+  "/pengaduan/page": "app/pengaduan/page.js",
   "/api/categories/route": "app/api/categories/route.js",
   "/api/settings/public/route": "app/api/settings/public/route.js"
 }

@@ -19,7 +19,8 @@ import {
   Calendar,
   User,
   Home,
-  User as UserIcon
+  User as UserIcon,
+  Upload
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -53,6 +54,7 @@ export default function BidangPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [filterStatus, setFilterStatus] = useState('all')
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [fileLampiran, setFileLampiran] = useState<File | null>(null)
 
   useEffect(() => {
     // Wait for auth to finish loading
@@ -237,6 +239,32 @@ export default function BidangPage() {
     }
   }
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('Ukuran file maksimal 10MB')
+        return
+      }
+
+      // Validate file type
+      const allowedTypes = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ]
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Format file tidak didukung. Gunakan JPG, PNG, GIF, PDF, atau DOC')
+        return
+      }
+
+      setFileLampiran(file)
+      toast.success(`File "${file.name}" siap diupload`)
+    }
+  }
+
   const handleSubmitTanggapan = async () => {
     if (!tanggapan.trim()) {
       toast.error('Isi tanggapan terlebih dahulu')
@@ -253,18 +281,21 @@ export default function BidangPage() {
       console.log('=== SUBMIT TANGGAPAN ===')
       console.log('Pengaduan:', selectedPengaduan.kode_pengaduan)
       console.log('Tanggapan:', tanggapan)
+      console.log('File lampiran:', fileLampiran?.name)
+
+      // Create FormData for file upload
+      const formData = new FormData()
+      formData.append('tanggapan', tanggapan)
+      formData.append('petugas', user?.nama_lengkap || 'Petugas Bidang')
+      formData.append('status', 'selesai')
+      if (fileLampiran) {
+        formData.append('file_lampiran', fileLampiran)
+      }
 
       // Submit tanggapan via new API endpoint
       const tanggapanResponse = await fetch(`/api/pengaduan/${selectedPengaduan.id}/tanggapan`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          tanggapan: tanggapan,
-          petugas: user?.nama_lengkap || 'Petugas Bidang',
-          status: 'selesai'
-        })
+        body: formData
       })
 
       const tanggapanResult = await tanggapanResponse.json()
@@ -287,6 +318,7 @@ export default function BidangPage() {
       
       setShowTanggapanModal(false)
       setTanggapan('')
+      setFileLampiran(null)
       setSelectedPengaduan(null)
     } catch (error) {
       toast.error((error as Error).message || 'Gagal mengirim tanggapan')
@@ -346,6 +378,14 @@ export default function BidangPage() {
   const filteredPengaduan = filterStatus === 'all' 
     ? pengaduanList 
     : pengaduanList.filter(p => p.status === filterStatus)
+
+  // Calculate statistics
+  const stats = {
+    total: pengaduanList.length,
+    terdisposisi: pengaduanList.filter(p => p.status === 'terdisposisi').length,
+    tindak_lanjut: pengaduanList.filter(p => p.status === 'tindak_lanjut').length,
+    selesai: pengaduanList.filter(p => p.status === 'selesai').length
+  }
 
   // Show loading state while checking authentication
   if (authLoading) {
@@ -524,6 +564,60 @@ export default function BidangPage() {
               />
             </div>
 
+            {/* File Upload */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Lampiran (Opsional)
+              </label>
+              <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-primary-500 transition-all">
+                <input
+                  type="file"
+                  id="file-upload-tanggapan"
+                  onChange={handleFileChange}
+                  accept="image/*,.pdf,.doc,.docx"
+                  className="hidden"
+                />
+                <label
+                  htmlFor="file-upload-tanggapan"
+                  className="cursor-pointer flex flex-col items-center"
+                >
+                  <Upload className="w-10 h-10 text-gray-400 mb-3" />
+                  {fileLampiran ? (
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-primary-600 mb-1">
+                        ✓ {fileLampiran.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {(fileLampiran.size / 1024).toFixed(2)} KB
+                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          setFileLampiran(null)
+                        }}
+                        className="text-xs text-red-600 hover:text-red-700 mt-2"
+                      >
+                        Hapus file
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-gray-700 mb-1">
+                        Klik untuk upload file
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        JPG, PNG, GIF, PDF, DOC (Max 10MB)
+                      </p>
+                    </>
+                  )}
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                📎 Lampiran akan ditampilkan di timeline pengaduan
+              </p>
+            </div>
+
             <div className="flex items-center space-x-3">
               <button
                 onClick={handleSubmitTanggapan}
@@ -672,9 +766,64 @@ export default function BidangPage() {
               animate={{ opacity: 1, y: 0 }}
               className="mb-6"
             >
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Daftar Pengaduan</h2>
-              <p className="text-gray-600">Kelola pengaduan yang masuk ke bidang Anda</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Riwayat Pengaduan Bidang</h2>
+              <p className="text-gray-600">Pengaduan yang didisposisikan ke bidang {user?.kode_bidang || 'Anda'}</p>
             </motion.div>
+
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <FileText className="w-8 h-8 opacity-80" />
+                  <span className="text-3xl font-bold">{stats.total}</span>
+                </div>
+                <p className="text-blue-100 text-sm font-medium">Total Pengaduan</p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-xl p-6 text-white shadow-lg"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <Clock className="w-8 h-8 opacity-80" />
+                  <span className="text-3xl font-bold">{stats.terdisposisi}</span>
+                </div>
+                <p className="text-yellow-100 text-sm font-medium">Terdisposisi</p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl p-6 text-white shadow-lg"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <AlertCircle className="w-8 h-8 opacity-80" />
+                  <span className="text-3xl font-bold">{stats.tindak_lanjut}</span>
+                </div>
+                <p className="text-purple-100 text-sm font-medium">Tindak Lanjut</p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl p-6 text-white shadow-lg"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <CheckCircle className="w-8 h-8 opacity-80" />
+                  <span className="text-3xl font-bold">{stats.selesai}</span>
+                </div>
+                <p className="text-green-100 text-sm font-medium">Selesai</p>
+              </motion.div>
+            </div>
           
             {filteredPengaduan.length === 0 ? (
               <div className="text-center py-16 bg-white rounded-2xl shadow-sm">

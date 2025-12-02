@@ -407,6 +407,7 @@ function TrackingContent() {
             <PengaduanTimeline 
               currentStatus={pengaduan.timeline.length > 0 ? pengaduan.timeline[pengaduan.timeline.length - 1].status as any : pengaduan.status}
               timeline={pengaduan.timeline}
+              bidangNama={pengaduan.bidang?.nama_bidang}
             />
           </motion.div>
         ) : hasSearched ? (

@@ -6,7 +6,11 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { tanggapan, petugas, status } = await request.json()
+    const formData = await request.formData()
+    const tanggapan = formData.get('tanggapan') as string
+    const petugas = formData.get('petugas') as string
+    const status = formData.get('status') as string
+    const fileLampiran = formData.get('file_lampiran') as File | null
     const pengaduanId = params.id
 
     if (!tanggapan || !petugas) {
@@ -16,7 +20,41 @@ export async function POST(
       )
     }
 
-    // Insert new status with tanggapan
+    let fileUrl = null
+
+    // Upload file if provided
+    if (fileLampiran) {
+      const fileExt = fileLampiran.name.split('.').pop()
+      const fileName = `${pengaduanId}-${Date.now()}.${fileExt}`
+      const filePath = `tanggapan/${fileName}`
+
+      console.log('📤 Uploading file:', fileName)
+
+      const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+        .from('pengaduan-files')
+        .upload(filePath, fileLampiran, {
+          contentType: fileLampiran.type,
+          upsert: false
+        })
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError)
+        return NextResponse.json(
+          { success: false, message: 'Gagal upload file: ' + uploadError.message },
+          { status: 500 }
+        )
+      }
+
+      // Get public URL
+      const { data: urlData } = supabaseAdmin.storage
+        .from('pengaduan-files')
+        .getPublicUrl(filePath)
+
+      fileUrl = urlData.publicUrl
+      console.log('✅ File uploaded:', fileUrl)
+    }
+
+    // Insert new status with tanggapan and file
     const { data: newStatus, error: statusError } = await supabaseAdmin
       .from('pengaduan_status')
       .insert({
@@ -24,7 +62,8 @@ export async function POST(
         status: status,
         keterangan: `Tanggapan dari ${petugas}`,
         tanggapan: tanggapan,
-        petugas: petugas
+        petugas: petugas,
+        file_url: fileUrl
       })
       .select()
       .single()
