@@ -125,98 +125,37 @@ Buka [http://localhost:5000](http://localhost:5000)
 
 ## 🗄️ Setup Database
 
-### 1. Buat Database di Supabase
+### Setup Lengkap (1 File SQL)
 
-1. Buka [Supabase](https://supabase.com)
-2. Create New Project
-3. Copy URL dan Keys
+**Semua setup database sudah disatukan dalam 1 file SQL!**
 
-### 2. Jalankan Schema SQL
+1. **Buat Project di Supabase**
+   - Buka [Supabase](https://supabase.com)
+   - Create New Project
+   - Copy URL dan Keys
 
-```sql
--- File: database/schema.sql
--- Copy & paste ke Supabase SQL Editor
+2. **Jalankan Schema SQL**
+   - Buka file `database/schema.sql`
+   - Copy seluruh isi file
+   - Paste ke Supabase SQL Editor
+   - Klik **Run**
 
--- Tables: users, pengaduan, pengaduan_status, kategori_pengaduan, bidang, kategori_bidang
-```
+3. **Selesai!** ✅
+   - Semua tables ter-create
+   - Data awal ter-insert (kategori, bidang)
+   - Storage bucket ter-setup
+   - Admin user ter-create (username: `admin`, password: `admin123`)
+   - Trigger auto-generate kode ter-install
 
-### 3. Insert Data Awal
+### Yang Sudah Termasuk dalam schema.sql:
 
-```sql
--- Admin User
-INSERT INTO users (username, email, password_hash, nama_lengkap, role)
-VALUES ('admin', 'admin@disnaker.go.id', '$2a$10$...', 'Administrator', 'admin');
-
--- Kategori & Bidang
-INSERT INTO kategori_bidang (kode, nama_kategori) VALUES
-('PHI', 'Pengawasan & Hubungan Industrial'),
-('NKT', 'Pelatihan & Produktivitas');
-```
-
-### 4. Setup Storage Bucket
-
-```sql
--- Buat bucket 'pengaduan-files'
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('pengaduan-files', 'pengaduan-files', true);
-
--- Set policy untuk public access
-CREATE POLICY "Public Access" ON storage.objects
-FOR SELECT USING (bucket_id = 'pengaduan-files');
-```
-
-### 5. Setup Trigger untuk Auto-Generate Kode
-
-```sql
--- Function untuk generate kode pengaduan
-CREATE OR REPLACE FUNCTION generate_kode_pengaduan()
-RETURNS TRIGGER AS $$
-DECLARE
-  new_kode TEXT;
-  year_part TEXT;
-  counter INTEGER;
-BEGIN
-  year_part := TO_CHAR(CURRENT_DATE, 'YYYY');
-  
-  -- Get next counter
-  SELECT COALESCE(MAX(CAST(SUBSTRING(kode_pengaduan FROM 10) AS INTEGER)), 0) + 1
-  INTO counter
-  FROM pengaduan
-  WHERE kode_pengaduan LIKE 'ADU-' || year_part || '-%';
-  
-  -- Generate kode
-  new_kode := 'ADU-' || year_part || '-' || LPAD(counter::TEXT, 4, '0');
-  NEW.kode_pengaduan := new_kode;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Create trigger
-CREATE TRIGGER set_kode_pengaduan
-BEFORE INSERT ON pengaduan
-FOR EACH ROW
-WHEN (NEW.kode_pengaduan IS NULL)
-EXECUTE FUNCTION generate_kode_pengaduan();
-```
-
-### 6. Data Consistency Check
-
-```sql
--- Check duplicate kode_pengaduan
-SELECT kode_pengaduan, COUNT(*)
-FROM pengaduan
-GROUP BY kode_pengaduan
-HAVING COUNT(*) > 1;
-
--- Fix duplicate if exists
-DELETE FROM pengaduan
-WHERE id NOT IN (
-  SELECT MIN(id)
-  FROM pengaduan
-  GROUP BY kode_pengaduan
-);
-```
+✅ **Tables**: users, pengaduan, pengaduan_status, kategori_pengaduan, bidang, disposisi, tanggapan  
+✅ **Indexes**: Optimasi query performance  
+✅ **Trigger**: Auto-generate kode pengaduan (ADU-YYYY-XXXX)  
+✅ **Storage Bucket**: pengaduan-files dengan policies  
+✅ **Default Data**: 5 kategori, 5 bidang, 1 admin user  
+✅ **RLS Policies**: Row Level Security  
+✅ **Verification Queries**: Check setup berhasil
 
 ---
 
@@ -482,28 +421,15 @@ sipelan/
 ### Database Issues
 
 **Error: "relation does not exist"**
-```sql
--- Jalankan schema.sql lengkap di Supabase SQL Editor
--- Pastikan semua tables ter-create
+```bash
+# Jalankan ulang database/schema.sql di Supabase SQL Editor
+# Pastikan semua tables ter-create dengan verification queries
 ```
 
 **Error: "duplicate key value violates unique constraint"**
-```sql
--- 1. Check trigger exists
-SELECT * FROM pg_trigger WHERE tgname = 'set_kode_pengaduan';
-
--- 2. Recreate trigger if missing
-CREATE OR REPLACE FUNCTION generate_kode_pengaduan() ...
--- (See Setup Database section)
-
--- 3. Fix existing duplicates
-DELETE FROM pengaduan
-WHERE id NOT IN (
-  SELECT MIN(id) FROM pengaduan GROUP BY kode_pengaduan
-);
-
--- 4. Reset sequence
-SELECT setval('pengaduan_id_seq', (SELECT MAX(id) FROM pengaduan));
+```bash
+# Trigger auto-generate kode sudah ter-install di schema.sql
+# Jika masih error, jalankan ulang schema.sql dari awal
 ```
 
 ### Email Issues

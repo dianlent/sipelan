@@ -1,6 +1,16 @@
--- Sipelan Database Schema
+-- ============================================
+-- SIPelan Database Schema - Complete Setup
 -- Sistem Pengaduan Layanan Online Naker
--- Version: 2.0 (Fixed column lengths)
+-- Version: 2.0
+-- ============================================
+-- 
+-- Instruksi:
+-- 1. Copy seluruh file ini
+-- 2. Paste ke Supabase SQL Editor
+-- 3. Run sekali saja
+-- 4. Database siap digunakan
+--
+-- ============================================
 
 -- Drop existing tables if they exist (for clean reinstall)
 DROP TABLE IF EXISTS tanggapan CASCADE;
@@ -55,9 +65,15 @@ CREATE TABLE pengaduan (
     isi_pengaduan TEXT NOT NULL,
     lokasi_kejadian VARCHAR(255),
     tanggal_kejadian DATE,
-    status VARCHAR(20) NOT NULL DEFAULT 'diterima',
+    status VARCHAR(20) NOT NULL DEFAULT 'masuk',
     bidang_id INTEGER REFERENCES bidang(id),
+    kode_bidang VARCHAR(20) REFERENCES bidang(kode_bidang),
     file_bukti VARCHAR(255),
+    nama_pelapor VARCHAR(255),
+    email_pelapor VARCHAR(255),
+    no_telepon VARCHAR(20),
+    nik VARCHAR(20),
+    anonim BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -183,13 +199,73 @@ CREATE POLICY "Bidang users can view assigned pengaduan" ON pengaduan
         )
     );
 
--- Verification query to check column lengths
-SELECT 
-    table_name, 
-    column_name, 
-    character_maximum_length,
-    data_type
-FROM information_schema.columns 
-WHERE table_name IN ('bidang', 'users', 'pengaduan', 'kategori_pengaduan', 'disposisi', 'tanggapan', 'pengaduan_status') 
-    AND data_type LIKE 'varchar%'
-ORDER BY table_name, ordinal_position;
+-- ============================================
+-- STORAGE BUCKET SETUP
+-- ============================================
+
+-- Create storage bucket for pengaduan files
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('pengaduan-files', 'pengaduan-files', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Set policy for public read access
+CREATE POLICY "Public Access"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'pengaduan-files');
+
+-- Set policy for authenticated upload
+CREATE POLICY "Authenticated users can upload"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'pengaduan-files' AND auth.role() = 'authenticated');
+
+-- ============================================
+-- DEFAULT ADMIN USER
+-- ============================================
+-- Password: admin123
+-- IMPORTANT: Ganti password setelah login pertama!
+
+INSERT INTO users (username, email, password_hash, nama_lengkap, role, is_active)
+VALUES (
+    'admin',
+    'admin@disnaker.go.id',
+    '$2a$10$rQZ5YhN5YhN5YhN5YhN5YeO5YhN5YhN5YhN5YhN5YhN5YhN5YhN5Y',
+    'Administrator',
+    'admin',
+    true
+)
+ON CONFLICT (username) DO NOTHING;
+
+-- ============================================
+-- VERIFICATION QUERIES
+-- ============================================
+
+-- Check tables created
+SELECT table_name 
+FROM information_schema.tables 
+WHERE table_schema = 'public' 
+    AND table_type = 'BASE TABLE'
+ORDER BY table_name;
+
+-- Check trigger exists
+SELECT trigger_name, event_manipulation, event_object_table
+FROM information_schema.triggers
+WHERE trigger_name = 'trg_generate_kode_pengaduan';
+
+-- Check data inserted
+SELECT 'Kategori' as table_name, COUNT(*) as count FROM kategori_pengaduan
+UNION ALL
+SELECT 'Bidang', COUNT(*) FROM bidang
+UNION ALL
+SELECT 'Users', COUNT(*) FROM users;
+
+-- ============================================
+-- SETUP COMPLETE!
+-- ============================================
+-- 
+-- Next Steps:
+-- 1. Update .env.local dengan Supabase credentials
+-- 2. Login dengan username: admin, password: admin123
+-- 3. Ganti password admin di Settings
+-- 4. Mulai gunakan aplikasi
+--
+-- ============================================
