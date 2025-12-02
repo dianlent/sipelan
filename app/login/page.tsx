@@ -34,8 +34,8 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (data.success) {
-        // Update Auth Context with user data and token
-        login(data.data.user, data.data.token)
+        // Update Auth Context with user data (session cookie already set by API)
+        login(data.data.user)
         
         toast.success('Login berhasil!')
         

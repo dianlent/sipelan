@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 interface User {
   id: string
@@ -16,9 +16,10 @@ interface User {
 interface AuthContextType {
   user: User | null
   isLoading: boolean
-  login: (userData: User, token: string) => void
-  logout: () => void
+  login: (userData: User) => void
+  logout: () => Promise<void>
   isAuthenticated: boolean
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -27,51 +28,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
-  const pathname = usePathname()
 
-  // Check authentication only on initial mount
-  useEffect(() => {
-    const checkAuth = () => {
-      try {
-        const token = localStorage.getItem('authToken')
-        const userData = localStorage.getItem('currentUser')
+  // Fetch current user from session
+  const fetchCurrentUser = useCallback(async () => {
+    try {
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include' // Important for cookies
+      })
 
-        if (token && userData) {
-          const parsedUser = JSON.parse(userData)
-          setUser(parsedUser)
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data?.user) {
+          setUser(result.data.user)
         } else {
           setUser(null)
         }
-      } catch (error) {
-        console.error('Auth check error:', error)
+      } else {
         setUser(null)
-      } finally {
-        setIsLoading(false)
       }
+    } catch (error) {
+      console.error('Auth check error:', error)
+      setUser(null)
+    } finally {
+      setIsLoading(false)
     }
-
-    checkAuth()
   }, [])
 
-  const login = useCallback((userData: User, token: string) => {
-    localStorage.setItem('authToken', token)
-    localStorage.setItem('currentUser', JSON.stringify(userData))
+  // Check authentication on mount
+  useEffect(() => {
+    fetchCurrentUser()
+  }, [fetchCurrentUser])
+
+  const login = useCallback((userData: User) => {
     setUser(userData)
   }, [])
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('currentUser')
-    setUser(null)
-    router.push('/')
+  const logout = useCallback(async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      })
+      setUser(null)
+      router.push('/')
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }, [router])
+
+  const refreshUser = useCallback(async () => {
+    await fetchCurrentUser()
+  }, [fetchCurrentUser])
 
   const value = {
     user,
     isLoading,
     login,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    refreshUser
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
