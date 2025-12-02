@@ -45,6 +45,8 @@ export default function PengaduanPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [kodeTracking, setKodeTracking] = useState('')
+  const [recaptchaEnabled, setRecaptchaEnabled] = useState(false)
+  const [recaptchaLoading, setRecaptchaLoading] = useState(true)
   const [formData, setFormData] = useState({
     kategori_id: '',
     judul_pengaduan: '',
@@ -59,9 +61,28 @@ export default function PengaduanPage() {
   })
 
   useEffect(() => {
-    // Load categories - no authentication required
+    // Load categories and reCAPTCHA settings
     loadCategories()
+    loadRecaptchaSettings()
   }, [])
+
+  const loadRecaptchaSettings = async () => {
+    try {
+      const response = await fetch('/api/settings/public')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.data) {
+          const enabled = data.data.recaptcha_enabled || false
+          setRecaptchaEnabled(enabled)
+          console.log('🔐 reCAPTCHA status:', enabled ? 'Enabled' : 'Disabled')
+        }
+      }
+    } catch (error) {
+      console.error('Error loading reCAPTCHA settings:', error)
+    } finally {
+      setRecaptchaLoading(false)
+    }
+  }
 
   const loadCategories = async () => {
     try {
@@ -108,20 +129,33 @@ export default function PengaduanPage() {
       console.log('=== FORM SUBMISSION START ===')
       console.log('Form Data:', formData)
 
-      // Execute reCAPTCHA (optional - will be empty if not configured)
+      // Execute reCAPTCHA if enabled
       let recaptchaToken = ''
-      if (executeRecaptcha) {
+      if (recaptchaEnabled) {
+        if (!executeRecaptcha) {
+          toast.error('reCAPTCHA belum siap. Silakan refresh halaman.')
+          setIsLoading(false)
+          return
+        }
+        
         console.log('🔐 Executing reCAPTCHA...')
         try {
           recaptchaToken = await executeRecaptcha('submit_pengaduan')
-          console.log('✅ reCAPTCHA token generated:', recaptchaToken ? 'Token received' : 'No token')
+          console.log('✅ reCAPTCHA token generated')
+          
+          if (!recaptchaToken) {
+            toast.error('Gagal mendapatkan token reCAPTCHA. Silakan coba lagi.')
+            setIsLoading(false)
+            return
+          }
         } catch (recaptchaError) {
           console.error('❌ reCAPTCHA execution failed:', recaptchaError)
-          console.warn('⚠️ Continuing without reCAPTCHA token')
+          toast.error('Verifikasi reCAPTCHA gagal. Silakan coba lagi.')
+          setIsLoading(false)
+          return
         }
       } else {
-        console.warn('⚠️ reCAPTCHA not available - submitting without protection')
-        console.warn('To enable reCAPTCHA: Add NEXT_PUBLIC_RECAPTCHA_SITE_KEY to .env.local')
+        console.log('ℹ️ reCAPTCHA disabled - submitting without protection')
       }
 
       // Validation
@@ -591,6 +625,38 @@ export default function PengaduanPage() {
                 </ul>
               </div>
             </div>
+
+            {/* reCAPTCHA Status Badge */}
+            {!recaptchaLoading && (
+              <div className={`flex items-center space-x-2 p-3 rounded-lg ${
+                recaptchaEnabled 
+                  ? 'bg-green-50 border border-green-200' 
+                  : 'bg-gray-50 border border-gray-200'
+              }`}>
+                {recaptchaEnabled ? (
+                  <>
+                    <div className="flex items-center justify-center w-6 h-6 bg-green-100 rounded-full">
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-green-900">
+                        Dilindungi oleh reCAPTCHA v3
+                      </p>
+                      <p className="text-xs text-green-700">
+                        Formulir ini dilindungi dari spam dan bot
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-5 h-5 text-gray-400" />
+                    <p className="text-sm text-gray-600">
+                      reCAPTCHA tidak aktif
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Submit Button */}
             <div className="flex items-center space-x-4 pt-4">
