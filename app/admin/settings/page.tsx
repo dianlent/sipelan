@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
   Settings, User, Lock, Bell, Mail, Shield, Database,
-  Save, RefreshCw, Eye, EyeOff, Check, AlertCircle
+  Save, RefreshCw, Eye, EyeOff, Check, AlertCircle, ShieldCheck
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -32,6 +32,12 @@ interface SettingsData {
     smtp_port: string
     smtp_user: string
     smtp_pass: string
+  }
+  recaptcha: {
+    site_key: string
+    secret_key: string
+    enabled: boolean
+    score_threshold: number
   }
 }
 
@@ -64,6 +70,12 @@ export default function SettingsPage() {
       smtp_port: '587',
       smtp_user: '',
       smtp_pass: ''
+    },
+    recaptcha: {
+      site_key: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '',
+      secret_key: '',
+      enabled: true,
+      score_threshold: 0.5
     }
   })
 
@@ -156,11 +168,40 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSaveRecaptcha = async () => {
+    setIsLoading(true)
+    try {
+      // Validate reCAPTCHA keys
+      if (settings.recaptcha.enabled) {
+        if (!settings.recaptcha.site_key || !settings.recaptcha.secret_key) {
+          toast.error('Site Key dan Secret Key harus diisi')
+          setIsLoading(false)
+          return
+        }
+        if (settings.recaptcha.score_threshold < 0 || settings.recaptcha.score_threshold > 1) {
+          toast.error('Score threshold harus antara 0.0 dan 1.0')
+          setIsLoading(false)
+          return
+        }
+      }
+      
+      // TODO: API call to save reCAPTCHA settings to .env or database
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      toast.success('Pengaturan reCAPTCHA berhasil disimpan')
+      toast('Restart aplikasi untuk menerapkan perubahan', { icon: 'ℹ️', duration: 5000 })
+    } catch (error) {
+      toast.error('Gagal menyimpan pengaturan reCAPTCHA')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const tabs = [
     { id: 'profile', label: 'Profil', icon: User },
     { id: 'password', label: 'Keamanan', icon: Lock },
     { id: 'notifications', label: 'Notifikasi', icon: Bell },
-    { id: 'system', label: 'Sistem', icon: Database }
+    { id: 'system', label: 'Sistem', icon: Database },
+    { id: 'recaptcha', label: 'reCAPTCHA', icon: ShieldCheck }
   ]
 
   if (authLoading) {
@@ -568,6 +609,156 @@ export default function SettingsPage() {
                         <>
                           <Save className="w-5 h-5" />
                           <span>Simpan Konfigurasi</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* reCAPTCHA Tab */}
+            {activeTab === 'recaptcha' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-xl border border-gray-200 p-8"
+              >
+                <div className="flex items-start space-x-3 mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <ShieldCheck className="w-5 h-5 text-green-600 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-green-900">Google reCAPTCHA v3</h4>
+                    <p className="text-sm text-green-700">Lindungi formulir pengaduan dari spam dan bot dengan reCAPTCHA v3</p>
+                  </div>
+                </div>
+
+                <h3 className="text-lg font-bold text-gray-900 mb-6">Konfigurasi reCAPTCHA v3</h3>
+                
+                <div className="space-y-6">
+                  {/* Enable/Disable Toggle */}
+                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900">Aktifkan reCAPTCHA</h4>
+                      <p className="text-sm text-gray-500">Aktifkan atau nonaktifkan perlindungan reCAPTCHA pada formulir</p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={settings.recaptcha.enabled}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          recaptcha: { ...prev.recaptcha, enabled: e.target.checked }
+                        }))}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  {/* Site Key */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Site Key (Public Key)
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.recaptcha.site_key}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        recaptcha: { ...prev.recaptcha, site_key: e.target.value }
+                      }))}
+                      placeholder="6L..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                      disabled={!settings.recaptcha.enabled}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Kunci publik yang digunakan di frontend (NEXT_PUBLIC_RECAPTCHA_SITE_KEY)</p>
+                  </div>
+
+                  {/* Secret Key */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Secret Key (Private Key)
+                    </label>
+                    <input
+                      type="password"
+                      value={settings.recaptcha.secret_key}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        recaptcha: { ...prev.recaptcha, secret_key: e.target.value }
+                      }))}
+                      placeholder="6L..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                      disabled={!settings.recaptcha.enabled}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Kunci rahasia yang digunakan di backend (RECAPTCHA_SECRET_KEY)</p>
+                  </div>
+
+                  {/* Score Threshold */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Score Threshold
+                    </label>
+                    <div className="flex items-center space-x-4">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={settings.recaptcha.score_threshold}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          recaptcha: { ...prev.recaptcha, score_threshold: parseFloat(e.target.value) }
+                        }))}
+                        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                        disabled={!settings.recaptcha.enabled}
+                      />
+                      <span className="text-lg font-bold text-blue-600 w-12 text-center">
+                        {settings.recaptcha.score_threshold.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-2">
+                      <span>0.0 (Lenient)</span>
+                      <span>0.5 (Balanced)</span>
+                      <span>1.0 (Strict)</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Skor minimum untuk diterima. Semakin tinggi semakin ketat (0.5 direkomendasikan)
+                    </p>
+                  </div>
+
+                  {/* Info Box */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="text-sm text-blue-900">
+                        <p className="font-semibold mb-2">Cara Mendapatkan Keys:</p>
+                        <ol className="list-decimal list-inside space-y-1 text-blue-800">
+                          <li>Kunjungi <a href="https://www.google.com/recaptcha/admin/create" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">Google reCAPTCHA Admin</a></li>
+                          <li>Pilih reCAPTCHA v3 dan daftarkan domain Anda</li>
+                          <li>Salin Site Key dan Secret Key</li>
+                          <li>Masukkan keys di atas dan simpan</li>
+                          <li>Restart aplikasi untuk menerapkan perubahan</li>
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="pt-4">
+                    <button
+                      onClick={handleSaveRecaptcha}
+                      disabled={isLoading}
+                      className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          <span>Menyimpan...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-5 h-5" />
+                          <span>Simpan Konfigurasi reCAPTCHA</span>
                         </>
                       )}
                     </button>

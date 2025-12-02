@@ -14,10 +14,12 @@ import {
   Calendar,
   MapPin,
   Filter,
-  Search
+  Search,
+  Home,
+  ClipboardList
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { useAuth } from '@/contexts/AuthContext'
+import Footer from '@/components/Footer'
 
 interface Pengaduan {
   id: string
@@ -25,7 +27,7 @@ interface Pengaduan {
   judul_pengaduan: string
   isi_pengaduan: string
   kategori: string
-  status: 'diterima' | 'di proses' | 'selesai'
+  status: string
   lokasi_kejadian?: string
   tanggal_kejadian?: string
   created_at: string
@@ -33,25 +35,15 @@ interface Pengaduan {
 
 export default function RiwayatPage() {
   const router = useRouter()
-  const { user, isLoading: authLoading, isAuthenticated } = useAuth()
   const [pengaduanList, setPengaduanList] = useState<Pengaduan[]>([])
   const [filteredList, setFilteredList] = useState<Pengaduan[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<string>('selesai')
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
-    // Check authentication using AuthContext
-    if (!authLoading && !isAuthenticated) {
-      toast.error('Silakan login terlebih dahulu')
-      router.push('/login')
-      return
-    }
-
-    if (user) {
-      loadPengaduan()
-    }
-  }, [user, authLoading, isAuthenticated, router])
+    loadPengaduan()
+  }, [])
 
   useEffect(() => {
     // Filter pengaduan
@@ -75,49 +67,29 @@ export default function RiwayatPage() {
     try {
       setIsLoading(true)
       
-      // TODO: Fetch from API
-      // Temporary mock data
-      const mockData: Pengaduan[] = [
-        {
-          id: '1',
-          kode_pengaduan: 'ADU-2024-0001',
-          judul_pengaduan: 'Upah tidak dibayar sesuai UMR',
-          isi_pengaduan: 'Perusahaan membayar upah di bawah UMR yang ditetapkan...',
-          kategori: 'Pengupahan',
-          status: 'di proses',
-          lokasi_kejadian: 'PT ABC, Jakarta',
-          tanggal_kejadian: '2024-01-15',
-          created_at: '2024-01-16T10:00:00Z'
-        },
-        {
-          id: '2',
-          kode_pengaduan: 'ADU-2024-0002',
-          judul_pengaduan: 'PHK tanpa pesangon',
-          isi_pengaduan: 'Saya di-PHK tanpa diberikan pesangon sesuai ketentuan...',
-          kategori: 'Ketenagakerjaan',
-          status: 'selesai',
-          lokasi_kejadian: 'PT XYZ, Bandung',
-          tanggal_kejadian: '2024-01-10',
-          created_at: '2024-01-11T14:30:00Z'
-        },
-        {
-          id: '3',
-          kode_pengaduan: 'ADU-2024-0003',
-          judul_pengaduan: 'Tidak ada APD di tempat kerja',
-          isi_pengaduan: 'Perusahaan tidak menyediakan APD untuk pekerja...',
-          kategori: 'K3',
-          status: 'diterima',
-          lokasi_kejadian: 'PT DEF, Surabaya',
-          tanggal_kejadian: '2024-01-20',
-          created_at: '2024-01-21T09:15:00Z'
+      // Fetch all completed pengaduan from API
+      const response = await fetch('/api/pengaduan?page=1&limit=100')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          const pengaduanData = result.data.map((p: any) => ({
+            id: p.id,
+            kode_pengaduan: p.kode_pengaduan,
+            judul_pengaduan: p.judul_pengaduan,
+            isi_pengaduan: p.isi_pengaduan || '',
+            kategori: p.kategori_pengaduan?.nama_kategori || 'Umum',
+            status: p.status,
+            lokasi_kejadian: p.lokasi_kejadian || '',
+            tanggal_kejadian: p.tanggal_kejadian || '',
+            created_at: p.created_at
+          }))
+          setPengaduanList(pengaduanData)
+          setFilteredList(pengaduanData)
         }
-      ]
-
-      setPengaduanList(mockData)
-      setFilteredList(mockData)
+      }
     } catch (error) {
+      console.error('Error loading pengaduan:', error)
       toast.error('Gagal memuat data pengaduan')
-      console.error('Load error:', error)
     } finally {
       setIsLoading(false)
     }
@@ -125,18 +97,25 @@ export default function RiwayatPage() {
 
   const getStatusBadge = (status: string) => {
     const badges = {
-      'diterima': 'bg-green-100 text-green-700 border-green-200',
-      'di proses': 'bg-yellow-100 text-yellow-700 border-yellow-200',
-      'selesai': 'bg-blue-100 text-blue-700 border-blue-200'
+      'masuk': 'bg-blue-100 text-blue-700 border-blue-200',
+      'terverifikasi': 'bg-green-100 text-green-700 border-green-200',
+      'terdisposisi': 'bg-purple-100 text-purple-700 border-purple-200',
+      'tindak_lanjut': 'bg-orange-100 text-orange-700 border-orange-200',
+      'selesai': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+      'ditolak': 'bg-red-100 text-red-700 border-red-200'
     }
     return badges[status as keyof typeof badges] || 'bg-gray-100 text-gray-700'
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'diterima':
+      case 'masuk':
+        return <FileText className="w-4 h-4" />
+      case 'terverifikasi':
+        return <CheckCircle className="w-4 h-4" />
+      case 'terdisposisi':
         return <AlertCircle className="w-4 h-4" />
-      case 'di proses':
+      case 'tindak_lanjut':
         return <Clock className="w-4 h-4" />
       case 'selesai':
         return <CheckCircle className="w-4 h-4" />
@@ -154,13 +133,6 @@ export default function RiwayatPage() {
     })
   }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -168,13 +140,14 @@ export default function RiwayatPage() {
       <nav className="bg-white shadow-md sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/dashboard" className="flex items-center space-x-2 text-gray-600 hover:text-primary-600 transition-colors">
-              <ArrowLeft className="w-5 h-5" />
-              <span className="font-medium">Kembali ke Dashboard</span>
+            <Link href="/" className="flex items-center space-x-2 text-gray-600 hover:text-purple-600 transition-colors">
+              <Home className="w-5 h-5" />
+              <span className="font-medium">Kembali ke Beranda</span>
             </Link>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-gray-900">{user.nama_lengkap}</p>
-              <p className="text-xs text-gray-500">{user.role}</p>
+            <div className="flex items-center space-x-4">
+              <Link href="/pengaduan" className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all">
+                Buat Pengaduan
+              </Link>
             </div>
           </div>
         </div>
@@ -187,8 +160,8 @@ export default function RiwayatPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Riwayat Pengaduan</h1>
-          <p className="text-gray-600">Lihat semua pengaduan yang pernah Anda ajukan</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Semua Riwayat Pengaduan</h1>
+          <p className="text-gray-600">Lihat semua pengaduan yang telah diajukan masyarakat</p>
         </motion.div>
 
         {/* Filter & Search */}
@@ -220,8 +193,10 @@ export default function RiwayatPage() {
                 className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all outline-none appearance-none"
               >
                 <option value="all">Semua Status</option>
-                <option value="diterima">Diterima</option>
-                <option value="di proses">Di Proses</option>
+                <option value="masuk">Masuk</option>
+                <option value="terverifikasi">Terverifikasi</option>
+                <option value="terdisposisi">Terdisposisi</option>
+                <option value="tindak_lanjut">Tindak Lanjut</option>
                 <option value="selesai">Selesai</option>
               </select>
             </div>
@@ -234,13 +209,13 @@ export default function RiwayatPage() {
               <p className="text-sm text-gray-600">Total</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-yellow-600">
-                {pengaduanList.filter(p => p.status === 'di proses').length}
+              <p className="text-2xl font-bold text-orange-600">
+                {pengaduanList.filter(p => p.status === 'tindak_lanjut' || p.status === 'terdisposisi').length}
               </p>
-              <p className="text-sm text-gray-600">Di Proses</p>
+              <p className="text-sm text-gray-600">Diproses</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-2xl font-bold text-emerald-600">
                 {pengaduanList.filter(p => p.status === 'selesai').length}
               </p>
               <p className="text-sm text-gray-600">Selesai</p>
@@ -338,6 +313,9 @@ export default function RiwayatPage() {
           </div>
         )}
       </div>
+
+      {/* Footer */}
+      <Footer />
     </div>
   )
 }

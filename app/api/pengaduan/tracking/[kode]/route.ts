@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
+import { maskName, maskEmail } from '@/lib/utils'
 
 export async function GET(
   request: NextRequest,
@@ -56,7 +57,7 @@ export async function GET(
       console.error('Timeline error:', timelineError)
     }
 
-    // Prepare response data
+    // Prepare response data with masking for anonymous submissions
     const responseData = {
       id: pengaduan.id,
       kode_pengaduan: pengaduan.kode_pengaduan,
@@ -69,14 +70,15 @@ export async function GET(
       file_bukti: pengaduan.file_bukti,
       created_at: pengaduan.created_at,
       user: pengaduan.anonim ? {
-        nama_lengkap: 'Anonim',
-        email: ''
+        nama_lengkap: maskName(pengaduan.nama_pelapor || 'Anonim'),
+        email: maskEmail(pengaduan.email_pelapor || '')
       } : (pengaduan.users || {
         nama_lengkap: pengaduan.nama_pelapor,
         email: pengaduan.email_pelapor
       }),
       bidang: pengaduan.bidang,
-      timeline: timeline || []
+      timeline: timeline || [],
+      anonim: pengaduan.anonim
     }
 
     return NextResponse.json({

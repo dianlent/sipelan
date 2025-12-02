@@ -19,6 +19,7 @@ interface Pengaduan {
   kategori: string
   status: string
   nama_pelapor: string
+  anonim: boolean
   created_at: string
   bidang?: string
 }
@@ -93,7 +94,8 @@ export default function PengaduanManagementPage() {
           judul_pengaduan: p.judul_pengaduan,
           kategori: p.kategori_pengaduan?.nama_kategori || 'Tidak ada kategori',
           status: p.status,
-          nama_pelapor: p.anonim ? 'Anonim' : (p.nama_pelapor || p.users?.nama_lengkap || 'Tidak diketahui'),
+          nama_pelapor: p.nama_pelapor || p.users?.nama_lengkap || 'Tidak diketahui',
+          anonim: p.anonim || false,
           created_at: p.created_at,
           bidang: p.bidang?.nama_bidang || null
         }))
@@ -376,6 +378,11 @@ export default function PengaduanManagementPage() {
                           <div className="flex items-center space-x-2">
                             <User className="w-4 h-4" />
                             <span>{pengaduan.nama_pelapor}</span>
+                            {pengaduan.anonim && (
+                              <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">
+                                Anonim
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center space-x-2">
                             <Calendar className="w-4 h-4" />

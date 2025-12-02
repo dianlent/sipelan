@@ -1,8 +1,9 @@
 {
-  "/admin/pengaduan/page": "app/admin/pengaduan/page.js",
-  "/admin/users/page": "app/admin/users/page.js",
-  "/api/pengaduan/tracking/[kode]/route": "app/api/pengaduan/tracking/[kode]/route.js",
+  "/page": "app/page.js",
+  "/admin/page": "app/admin/page.js",
   "/admin/settings/page": "app/admin/settings/page.js",
-  "/admin/reports/page": "app/admin/reports/page.js",
-  "/page": "app/page.js"
+  "/tracking/page": "app/tracking/page.js",
+  "/riwayat/page": "app/riwayat/page.js",
+  "/api/pengaduan/route": "app/api/pengaduan/route.js",
+  "/api/stats/route": "app/api/stats/route.js"
 }

@@ -41,6 +41,7 @@ interface Pengaduan {
   kategori: string
   status: string
   nama_pelapor: string
+  anonim: boolean
   created_at: string
   bidang?: string
 }
@@ -151,13 +152,15 @@ export default function AdminPage() {
       console.log('Total pengaduan from DB:', pengaduanData.length)
       
       // Convert to display format
+      // Admin can see full name even for anonymous submissions
       const pengaduanArray: Pengaduan[] = pengaduanData.map((p: any) => ({
         id: p.id,
         kode_pengaduan: p.kode_pengaduan,
         judul_pengaduan: p.judul_pengaduan,
         kategori: p.kategori_pengaduan?.nama_kategori || 'Tidak ada kategori',
         status: p.status,
-        nama_pelapor: p.anonim ? 'Anonim' : (p.nama_pelapor || p.users?.nama_lengkap || 'Tidak diketahui'),
+        nama_pelapor: p.nama_pelapor || p.users?.nama_lengkap || 'Tidak diketahui',
+        anonim: p.anonim || false,
         created_at: p.created_at,
         bidang: p.bidang?.nama_bidang || null
       }))
@@ -808,6 +811,11 @@ export default function AdminPage() {
                         <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                         <span className="font-medium">Pelapor:</span>
                         <span className="text-gray-900 font-semibold">{pengaduan.nama_pelapor}</span>
+                        {pengaduan.anonim && (
+                          <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">
+                            Anonim - Data Internal
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center space-x-1.5 text-gray-600">
                         <Clock className="w-3.5 h-3.5" />

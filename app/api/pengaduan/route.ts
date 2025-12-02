@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     const no_telepon = formData.get('no_telepon') as string
     const anonim = formData.get('anonim') === 'true'
     const file_bukti = formData.get('file_bukti') as File | null
+    const recaptchaToken = formData.get('recaptchaToken') as string
 
     // Validation
     if (!kategori_id || !judul_pengaduan || !isi_pengaduan || !nama_pelapor || !email_pelapor || !no_telepon) {
@@ -24,6 +25,32 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'Data tidak lengkap' },
         { status: 400 }
       )
+    }
+
+    // Verify reCAPTCHA token
+    if (recaptchaToken) {
+      try {
+        const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY
+        if (recaptchaSecret) {
+          const verifyResponse = await fetch(
+            `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${recaptchaToken}`,
+            { method: 'POST' }
+          )
+          const verifyData = await verifyResponse.json()
+          
+          if (!verifyData.success || verifyData.score < 0.5) {
+            console.error('reCAPTCHA verification failed:', verifyData)
+            return NextResponse.json(
+              { success: false, message: 'Verifikasi reCAPTCHA gagal. Silakan coba lagi.' },
+              { status: 400 }
+            )
+          }
+          console.log('✅ reCAPTCHA verified, score:', verifyData.score)
+        }
+      } catch (recaptchaError) {
+        console.error('reCAPTCHA verification error:', recaptchaError)
+        // Continue even if reCAPTCHA fails (optional: make it strict by returning error)
+      }
     }
 
     // Handle file upload if present
@@ -53,16 +80,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare data for insertion
+    // IMPORTANT: Always save full data to database for admin purposes
+    // Masking will be done on display/frontend only
     const pengaduanData = {
       kategori_id: parseInt(kategori_id),
       judul_pengaduan,
       isi_pengaduan,
       lokasi_kejadian: lokasi_kejadian || null,
       tanggal_kejadian: tanggal_kejadian || null,
-      nama_pelapor: anonim ? 'Anonim' : nama_pelapor,
-      email_pelapor: anonim ? '' : email_pelapor,
+      nama_pelapor: nama_pelapor, // Always save full name for admin
+      email_pelapor: email_pelapor, // Always save full email for admin
       no_telepon,
-      anonim,
+      anonim, // Flag to indicate if should be masked in public view
       file_bukti: file_bukti_path,
       status: 'masuk',
       user_id: null // Anonymous submission

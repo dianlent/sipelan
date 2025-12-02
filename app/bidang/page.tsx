@@ -34,6 +34,7 @@ interface Pengaduan {
   status: string
   nama_pelapor: string
   email_pelapor: string
+  anonim: boolean
   lokasi_kejadian?: string
   tanggal_kejadian?: string
   created_at: string
@@ -126,8 +127,9 @@ export default function BidangPage() {
         isi_pengaduan: p.isi_pengaduan,
         kategori: p.kategori_pengaduan?.nama_kategori || 'Tidak ada kategori',
         status: p.status,
-        nama_pelapor: p.anonim ? 'Anonim' : (p.nama_pelapor || p.users?.nama_lengkap || 'Tidak diketahui'),
-        email_pelapor: p.anonim ? '' : (p.email_pelapor || p.users?.email || ''),
+        nama_pelapor: p.nama_pelapor || p.users?.nama_lengkap || 'Tidak diketahui',
+        email_pelapor: p.email_pelapor || p.users?.email || '',
+        anonim: p.anonim || false,
         lokasi_kejadian: p.lokasi_kejadian || '',
         tanggal_kejadian: p.tanggal_kejadian || '',
         created_at: p.created_at,
@@ -404,9 +406,14 @@ export default function BidangPage() {
               {/* Info */}
               <div className="grid md:grid-cols-2 gap-4 bg-gray-50 rounded-xl p-4">
                 <div>
-                  <p className="text-sm text-gray-500">Pelapor</p>
+                  <p className="text-sm text-gray-500">Pelapor {selectedPengaduan.anonim && <span className="text-xs text-orange-600">(Anonim - Data Internal)</span>}</p>
                   <p className="font-semibold text-gray-900">{selectedPengaduan.nama_pelapor}</p>
                   <p className="text-sm text-gray-600">{selectedPengaduan.email_pelapor}</p>
+                  {selectedPengaduan.anonim && (
+                    <p className="text-xs text-orange-600 mt-1">
+                      ⚠️ Data ini hanya untuk keperluan internal dan tidak ditampilkan ke publik
+                    </p>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Kategori</p>

@@ -3,6 +3,7 @@ import { Poppins } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { ReCaptchaProvider } from '@/components/ReCaptchaProvider'
 
 const poppins = Poppins({ 
   weight: ['300', '400', '500', '600', '700', '800'],
@@ -12,7 +13,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: 'SIPelan - Sistem Pengaduan Layanan Online Naker',
-  description: 'Sistem Pengaduan Layanan Online Dinas Ketenagakerjaan',
+  description: 'Sistem Pengaduan Layanan Online Dinas Tenaga Kerja Kabupaten Pati',
 }
 
 export default function RootLayout({
@@ -23,9 +24,11 @@ export default function RootLayout({
   return (
     <html lang="id" className="scroll-smooth">
       <body className={poppins.className}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <ReCaptchaProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ReCaptchaProvider>
         <Toaster 
           position="top-right"
           toastOptions={{

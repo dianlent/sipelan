@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3'
 
 interface Category {
   id: number
@@ -39,6 +40,7 @@ interface Category {
 export default function PengaduanPage() {
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
+  const { executeRecaptcha } = useGoogleReCaptcha()
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -106,6 +108,22 @@ export default function PengaduanPage() {
       console.log('=== FORM SUBMISSION START ===')
       console.log('Form Data:', formData)
 
+      // Execute reCAPTCHA (optional - will be empty if not configured)
+      let recaptchaToken = ''
+      if (executeRecaptcha) {
+        console.log('🔐 Executing reCAPTCHA...')
+        try {
+          recaptchaToken = await executeRecaptcha('submit_pengaduan')
+          console.log('✅ reCAPTCHA token generated:', recaptchaToken ? 'Token received' : 'No token')
+        } catch (recaptchaError) {
+          console.error('❌ reCAPTCHA execution failed:', recaptchaError)
+          console.warn('⚠️ Continuing without reCAPTCHA token')
+        }
+      } else {
+        console.warn('⚠️ reCAPTCHA not available - submitting without protection')
+        console.warn('To enable reCAPTCHA: Add NEXT_PUBLIC_RECAPTCHA_SITE_KEY to .env.local')
+      }
+
       // Validation
       if (!formData.kategori_id) {
         toast.error('Pilih kategori pengaduan')
@@ -149,6 +167,7 @@ export default function PengaduanPage() {
       submitData.append('email_pelapor', formData.email_pelapor)
       submitData.append('no_telepon', formData.no_telepon)
       submitData.append('anonim', formData.anonim ? 'true' : 'false')
+      submitData.append('recaptchaToken', recaptchaToken)
       if (formData.file_bukti) {
         submitData.append('file_bukti', formData.file_bukti)
       }
@@ -192,8 +211,13 @@ export default function PengaduanPage() {
         anonim: false
       })
     } catch (error: any) {
-      toast.error(error.message || 'Gagal mengajukan pengaduan. Silakan coba lagi.')
-      console.error('Submit error:', error)
+      console.error('❌ Submit error:', error)
+      console.error('Error type:', typeof error)
+      console.error('Error message:', error?.message)
+      console.error('Error stack:', error?.stack)
+      
+      const errorMessage = error?.message || error?.toString() || 'Gagal mengajukan pengaduan. Silakan coba lagi.'
+      toast.error(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -567,47 +591,6 @@ export default function PengaduanPage() {
                 </ul>
               </div>
             </div>
-
-            {/* Debug Buttons (Development Only) */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
-                <p className="text-sm font-semibold text-yellow-800 mb-2">Debug Tools:</p>
-                <div className="flex space-x-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      console.log('Current formData:', formData)
-                      console.log('localStorage allPengaduan:', JSON.parse(localStorage.getItem('allPengaduan') || '{}'))
-                      console.log('localStorage myPengaduan:', JSON.parse(localStorage.getItem('myPengaduan') || '[]'))
-                    }}
-                    className="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600"
-                  >
-                    Debug Console
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormData({
-                        kategori_id: '1',
-                        judul_pengaduan: 'Test Pengaduan - Upah Tidak Dibayar',
-                        isi_pengaduan: 'Ini adalah pengaduan test untuk debugging. Perusahaan tidak membayar upah sesuai UMR.',
-                        lokasi_kejadian: 'PT Contoh, Jakarta',
-                        tanggal_kejadian: '2024-11-01',
-                        file_bukti: null,
-                        nama_pelapor: 'Test User',
-                        email_pelapor: 'test@example.com',
-                        no_telepon: '08123456789',
-                        anonim: false
-                      })
-                      toast.success('Form diisi dengan data test')
-                    }}
-                    className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
-                  >
-                    Isi Test Data
-                  </button>
-                </div>
-              </div>
-            )}
 
             {/* Submit Button */}
             <div className="flex items-center space-x-4 pt-4">

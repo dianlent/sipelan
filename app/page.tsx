@@ -27,7 +27,9 @@ import {
   TrendingUp,
   MessageSquare,
   Sparkles,
-  User
+  User,
+  Calendar,
+  Eye
 } from 'lucide-react'
 import Footer from '@/components/Footer'
 
@@ -39,6 +41,15 @@ interface Stats {
   satisfaction: number
 }
 
+interface RecentPengaduan {
+  id: string
+  kode_pengaduan: string
+  judul_pengaduan: string
+  kategori: string
+  status: string
+  created_at: string
+}
+
 export default function HomePage() {
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
@@ -48,9 +59,12 @@ export default function HomePage() {
     satisfaction: 95
   })
   const [isLoading, setIsLoading] = useState(true)
+  const [recentPengaduan, setRecentPengaduan] = useState<RecentPengaduan[]>([])
+  const [isLoadingPengaduan, setIsLoadingPengaduan] = useState(true)
 
   useEffect(() => {
     fetchStats()
+    fetchRecentPengaduan()
   }, [])
 
   const fetchStats = async () => {
@@ -66,6 +80,51 @@ export default function HomePage() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const fetchRecentPengaduan = async () => {
+    try {
+      // Fetch all recent pengaduan (all statuses)
+      const response = await fetch('/api/pengaduan?page=1&limit=6')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          setRecentPengaduan(result.data.map((p: any) => ({
+            id: p.id,
+            kode_pengaduan: p.kode_pengaduan,
+            judul_pengaduan: p.judul_pengaduan,
+            kategori: p.kategori_pengaduan?.nama_kategori || 'Umum',
+            status: p.status,
+            created_at: p.created_at
+          })))
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching recent pengaduan:', error)
+    } finally {
+      setIsLoadingPengaduan(false)
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+  }
+
+  const getStatusBadge = (status: string) => {
+    const badges: Record<string, { bg: string, text: string, label: string }> = {
+      'masuk': { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Masuk' },
+      'terverifikasi': { bg: 'bg-green-100', text: 'text-green-700', label: 'Terverifikasi' },
+      'terdisposisi': { bg: 'bg-purple-100', text: 'text-purple-700', label: 'Terdisposisi' },
+      'tindak_lanjut': { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Tindak Lanjut' },
+      'selesai': { bg: 'bg-emerald-100', text: 'text-emerald-700', label: 'Selesai' },
+      'ditolak': { bg: 'bg-red-100', text: 'text-red-700', label: 'Ditolak' }
+    }
+    return badges[status] || { bg: 'bg-gray-100', text: 'text-gray-700', label: status }
   }
   return (
     <div className="min-h-screen">
@@ -498,6 +557,106 @@ export default function HomePage() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Recent Pengaduan Section */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <div className="inline-flex items-center space-x-2 bg-purple-100 px-4 py-2 rounded-full mb-6">
+              <ClipboardList className="w-4 h-4 text-purple-600" />
+              <span className="text-purple-600 text-sm font-semibold">Pengaduan Terbaru</span>
+            </div>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Pengaduan Masyarakat</h2>
+            <p className="text-xl text-gray-600">Lihat pengaduan terbaru yang diajukan masyarakat</p>
+          </motion.div>
+
+          {isLoadingPengaduan ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="bg-white border border-gray-200 rounded-2xl p-6 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
+                  <div className="h-6 bg-gray-200 rounded w-full mb-3"></div>
+                  <div className="h-4 bg-gray-200 rounded w-2/3 mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+              ))}
+            </div>
+          ) : recentPengaduan.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recentPengaduan.map((pengaduan, index) => (
+                <motion.div
+                  key={pengaduan.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl hover:-translate-y-2 transition-all"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">
+                      {pengaduan.kode_pengaduan}
+                    </span>
+                    <span className={`inline-flex items-center space-x-1 px-3 py-1 ${getStatusBadge(pengaduan.status).bg} ${getStatusBadge(pengaduan.status).text} rounded-full text-xs font-semibold`}>
+                      <CheckCircle className="w-3 h-3" />
+                      <span>{getStatusBadge(pengaduan.status).label}</span>
+                    </span>
+                  </div>
+                  
+                  <h3 className="text-lg font-bold text-gray-900 mb-3 line-clamp-2 group-hover:text-purple-600 transition-colors">
+                    {pengaduan.judul_pengaduan}
+                  </h3>
+                  
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="w-4 h-4 text-purple-500" />
+                      <span>{pengaduan.kategori}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Calendar className="w-4 h-4 text-gray-400" />
+                      <span>{formatDate(pengaduan.created_at)}</span>
+                    </div>
+                  </div>
+
+                  <Link
+                    href={`/tracking?kode=${pengaduan.kode_pengaduan}`}
+                    className="mt-4 flex items-center justify-center space-x-2 w-full py-2 bg-gradient-to-r from-purple-50 to-pink-50 text-purple-600 rounded-xl font-semibold hover:from-purple-100 hover:to-pink-100 transition-all group-hover:shadow-md"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>Lihat Detail</span>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg">Belum ada pengaduan</p>
+            </div>
+          )}
+
+          {recentPengaduan.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mt-12"
+            >
+              <Link
+                href="/riwayat"
+                className="inline-flex items-center space-x-2 px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all"
+              >
+                <span>Lihat Semua Riwayat</span>
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </motion.div>
+          )}
         </div>
       </section>
 

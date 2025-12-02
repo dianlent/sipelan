@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
+import { maskName } from '@/lib/utils'
 
 interface Pengaduan {
   id: string
@@ -31,6 +32,7 @@ interface Pengaduan {
   kategori: string
   status: string
   nama_pelapor: string
+  anonim: boolean
   created_at: string
 }
 
@@ -133,7 +135,8 @@ export default function DashboardPage() {
           isi_pengaduan: p.isi_pengaduan,
           kategori: p.kategori,
           status: p.status,
-          nama_pelapor: p.user?.nama_lengkap || 'Anonim',
+          nama_pelapor: p.user?.nama_lengkap || p.nama_pelapor || 'Anonim',
+          anonim: p.anonim || false,
           created_at: p.created_at
         }))
       
@@ -622,7 +625,7 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-3 text-xs text-gray-500">
                             <span className="flex items-center gap-1">
                               <Users className="w-3 h-3" />
-                              {pengaduan.nama_pelapor}
+                              {pengaduan.anonim ? maskName(pengaduan.nama_pelapor) : pengaduan.nama_pelapor}
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
