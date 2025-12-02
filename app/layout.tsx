@@ -4,6 +4,7 @@ import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ReCaptchaProvider } from '@/components/ReCaptchaProvider'
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const poppins = Poppins({ 
   weight: ['300', '400', '500', '600', '700', '800'],
@@ -53,6 +54,7 @@ export default function RootLayout({
             },
           }}
         />
+        <SpeedInsights />
       </body>
     </html>
   )

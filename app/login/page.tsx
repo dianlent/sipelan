@@ -109,7 +109,7 @@ export default function LoginPage() {
               <span className="block text-3xl font-normal text-white/90 mt-2">di SIPelan</span>
             </h1>
             <p className="text-xl text-white/90 mb-12 leading-relaxed">
-              Sistem Pengaduan Layanan Online Naker yang mudah, cepat, dan transparan untuk melayani masyarakat.
+              Sistem Pengaduan Pelayanan Naker yang mudah, cepat, dan transparan untuk melayani masyarakat.
             </p>
 
             {/* Features */}
