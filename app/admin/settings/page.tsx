@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
   Settings, User, Lock, Bell, Mail, Shield, Database,
-  Save, RefreshCw, Eye, EyeOff, Check, AlertCircle, ShieldCheck
+  Save, RefreshCw, Eye, EyeOff, Check, AlertCircle, ShieldCheck, Image as ImageIcon, Upload,
+  Facebook, Twitter, Instagram, Youtube
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -39,6 +40,14 @@ interface SettingsData {
     enabled: boolean
     score_threshold: number
   }
+  app: {
+    nama_aplikasi: string
+    logo_url: string
+    facebook_url: string
+    twitter_url: string
+    instagram_url: string
+    youtube_url: string
+  }
 }
 
 export default function SettingsPage() {
@@ -48,6 +57,9 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
+  
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string>('')
   
   const [settings, setSettings] = useState<SettingsData>({
     profile: {
@@ -76,12 +88,20 @@ export default function SettingsPage() {
       secret_key: '',
       enabled: false,
       score_threshold: 0.5
+    },
+    app: {
+      nama_aplikasi: 'SIPelan',
+      logo_url: '',
+      facebook_url: '',
+      twitter_url: '',
+      instagram_url: '',
+      youtube_url: ''
     }
   })
 
-  // Load reCAPTCHA settings from database
+  // Load settings from database
   useEffect(() => {
-    const loadRecaptchaSettings = async () => {
+    const loadAllSettings = async () => {
       try {
         const response = await fetch('/api/settings', {
           credentials: 'include'
@@ -97,17 +117,30 @@ export default function SettingsPage() {
                 site_key: data.data.recaptcha_site_key || '',
                 secret_key: data.data.recaptcha_secret_key || '',
                 score_threshold: data.data.recaptcha_score_threshold || 0.5
+              },
+              app: {
+                nama_aplikasi: data.data.app_name || 'SIPelan',
+                logo_url: data.data.app_logo_url || '',
+                facebook_url: data.data.facebook_url || '',
+                twitter_url: data.data.twitter_url || '',
+                instagram_url: data.data.instagram_url || '',
+                youtube_url: data.data.youtube_url || ''
               }
             }))
+            
+            // Set logo preview if exists
+            if (data.data.app_logo_url) {
+              setLogoPreview(data.data.app_logo_url)
+            }
           }
         }
       } catch (error) {
-        console.error('Error loading reCAPTCHA settings:', error)
+        console.error('Error loading settings:', error)
       }
     }
 
     if (user && user.role === 'admin') {
-      loadRecaptchaSettings()
+      loadAllSettings()
     }
   }, [user])
 
@@ -200,6 +233,86 @@ export default function SettingsPage() {
     }
   }
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/svg+xml']
+    if (!validTypes.includes(file.type)) {
+      toast.error('Format file harus JPG, PNG, atau SVG')
+      return
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Ukuran file maksimal 2MB')
+      return
+    }
+
+    setLogoFile(file)
+    
+    // Create preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveLogo = () => {
+    setLogoFile(null)
+    setLogoPreview('')
+  }
+
+  const handleSaveApp = async () => {
+    setIsLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('app_name', settings.app.nama_aplikasi)
+      formData.append('facebook_url', settings.app.facebook_url)
+      formData.append('twitter_url', settings.app.twitter_url)
+      formData.append('instagram_url', settings.app.instagram_url)
+      formData.append('youtube_url', settings.app.youtube_url)
+      
+      if (logoFile) {
+        formData.append('logo', logoFile)
+      }
+
+      const response = await fetch('/api/settings/app', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast.success('Pengaturan aplikasi berhasil disimpan')
+        
+        // Update logo URL if uploaded
+        if (data.logo_url) {
+          setSettings(prev => ({
+            ...prev,
+            app: {
+              ...prev.app,
+              logo_url: data.logo_url
+            }
+          }))
+          setLogoPreview(data.logo_url)
+          setLogoFile(null)
+        }
+      } else {
+        toast.error(data.message || 'Gagal menyimpan pengaturan')
+      }
+    } catch (error) {
+      console.error('Error saving app settings:', error)
+      toast.error('Terjadi kesalahan saat menyimpan')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleSaveRecaptcha = async () => {
     setIsLoading(true)
     try {
@@ -249,6 +362,7 @@ export default function SettingsPage() {
   }
 
   const tabs = [
+    { id: 'app', label: 'Aplikasi', icon: ImageIcon },
     { id: 'profile', label: 'Profil', icon: User },
     { id: 'password', label: 'Keamanan', icon: Lock },
     { id: 'notifications', label: 'Notifikasi', icon: Bell },
@@ -312,6 +426,197 @@ export default function SettingsPage() {
                 ))}
               </div>
             </div>
+
+            {/* App Tab */}
+            {activeTab === 'app' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-white rounded-xl border border-gray-200 p-8"
+              >
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">Pengaturan Aplikasi</h3>
+                  <p className="text-sm text-gray-600">Kelola logo dan nama aplikasi yang ditampilkan di homepage</p>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Nama Aplikasi */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Nama Aplikasi
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.app.nama_aplikasi}
+                      onChange={(e) => setSettings(prev => ({
+                        ...prev,
+                        app: { ...prev.app, nama_aplikasi: e.target.value }
+                      }))}
+                      placeholder="SIPelan"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Nama aplikasi akan ditampilkan di header homepage</p>
+                  </div>
+
+                  {/* Logo Upload */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Logo Aplikasi
+                    </label>
+                    
+                    {/* Logo Preview */}
+                    {logoPreview ? (
+                      <div className="mb-4">
+                        <div className="relative inline-block">
+                          <img 
+                            src={logoPreview} 
+                            alt="Logo Preview" 
+                            className="w-32 h-32 object-contain border-2 border-gray-200 rounded-lg p-2 bg-white"
+                          />
+                          <button
+                            onClick={handleRemoveLogo}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">Klik × untuk menghapus logo</p>
+                      </div>
+                    ) : (
+                      <div className="mb-4">
+                        <div className="w-32 h-32 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50">
+                          <ImageIcon className="w-12 h-12 text-gray-400" />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">Belum ada logo</p>
+                      </div>
+                    )}
+
+                    {/* Upload Button */}
+                    <div>
+                      <label className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
+                        <Upload className="w-4 h-4" />
+                        <span className="text-sm font-medium">Upload Logo</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png,image/svg+xml"
+                          onChange={handleLogoChange}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-xs text-gray-500 mt-2">Format: JPG, PNG, SVG (Max 2MB)</p>
+                    </div>
+                  </div>
+
+                  {/* Social Media Links */}
+                  <div className="pt-6 border-t border-gray-200">
+                    <h4 className="text-md font-semibold text-gray-800 mb-4">Link Sosial Media</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Facebook */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <div className="flex items-center gap-2">
+                            <Facebook className="w-4 h-4 text-blue-600" />
+                            <span>Facebook</span>
+                          </div>
+                        </label>
+                        <input
+                          type="url"
+                          value={settings.app.facebook_url}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            app: { ...prev.app, facebook_url: e.target.value }
+                          }))}
+                          placeholder="https://facebook.com/..."
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        />
+                      </div>
+
+                      {/* Twitter */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <div className="flex items-center gap-2">
+                            <Twitter className="w-4 h-4 text-sky-500" />
+                            <span>Twitter / X</span>
+                          </div>
+                        </label>
+                        <input
+                          type="url"
+                          value={settings.app.twitter_url}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            app: { ...prev.app, twitter_url: e.target.value }
+                          }))}
+                          placeholder="https://twitter.com/..."
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        />
+                      </div>
+
+                      {/* Instagram */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <div className="flex items-center gap-2">
+                            <Instagram className="w-4 h-4 text-pink-600" />
+                            <span>Instagram</span>
+                          </div>
+                        </label>
+                        <input
+                          type="url"
+                          value={settings.app.instagram_url}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            app: { ...prev.app, instagram_url: e.target.value }
+                          }))}
+                          placeholder="https://instagram.com/..."
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        />
+                      </div>
+
+                      {/* Youtube */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <div className="flex items-center gap-2">
+                            <Youtube className="w-4 h-4 text-red-600" />
+                            <span>Youtube</span>
+                          </div>
+                        </label>
+                        <input
+                          type="url"
+                          value={settings.app.youtube_url}
+                          onChange={(e) => setSettings(prev => ({
+                            ...prev,
+                            app: { ...prev.app, youtube_url: e.target.value }
+                          }))}
+                          placeholder="https://youtube.com/..."
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Kosongkan jika tidak ingin menampilkan link sosial media</p>
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <button
+                      onClick={handleSaveApp}
+                      disabled={isLoading}
+                      className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isLoading ? (
+                        <>
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          <span>Menyimpan...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-5 h-5" />
+                          <span>Simpan Pengaturan</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
 
             {/* Profile Tab */}
             {activeTab === 'profile' && (

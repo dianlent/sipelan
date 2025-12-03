@@ -48,6 +48,8 @@ interface RecentPengaduan {
   kategori: string
   status: string
   created_at: string
+  nama_pelapor: string
+  anonim: boolean
 }
 
 export default function HomePage() {
@@ -61,10 +63,13 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [recentPengaduan, setRecentPengaduan] = useState<RecentPengaduan[]>([])
   const [isLoadingPengaduan, setIsLoadingPengaduan] = useState(true)
+  const [appName, setAppName] = useState('SIPelan')
+  const [appLogo, setAppLogo] = useState<string | null>(null)
 
   useEffect(() => {
     fetchStats()
     fetchRecentPengaduan()
+    fetchAppSettings()
   }, [])
 
   const fetchStats = async () => {
@@ -95,7 +100,9 @@ export default function HomePage() {
             judul_pengaduan: p.judul_pengaduan,
             kategori: p.kategori_pengaduan?.nama_kategori || 'Umum',
             status: p.status,
-            created_at: p.created_at
+            created_at: p.created_at,
+            nama_pelapor: p.nama_pelapor || 'Anonim',
+            anonim: p.anonim || false
           })))
         }
       }
@@ -106,6 +113,21 @@ export default function HomePage() {
     }
   }
 
+  const fetchAppSettings = async () => {
+    try {
+      const response = await fetch('/api/settings/app/public')
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          setAppName(result.data.app_name || 'SIPelan')
+          setAppLogo(result.data.app_logo_url)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching app settings:', error)
+    }
+  }
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('id-ID', {
@@ -113,6 +135,17 @@ export default function HomePage() {
       month: 'long',
       year: 'numeric'
     })
+  }
+
+  // Mask nama pelapor untuk privasi publik
+  const maskName = (name: string, isAnonim: boolean) => {
+    if (isAnonim || !name || name === 'Anonim') return 'Anonim'
+    
+    const parts = name.trim().split(' ')
+    return parts.map(part => {
+      if (part.length <= 2) return part[0] + '*'
+      return part[0] + '*'.repeat(part.length - 2) + part[part.length - 1]
+    }).join(' ')
   }
 
   const getStatusBadge = (status: string) => {
@@ -138,14 +171,24 @@ export default function HomePage() {
                 whileHover={{ scale: 1.05, rotate: 5 }}
                 className="relative"
               >
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all">
-                  <ClipboardCheck className="w-6 h-6 text-white" />
-                </div>
+                {appLogo ? (
+                  <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg group-hover:shadow-xl transition-all border-2 border-purple-200">
+                    <img 
+                      src={appLogo} 
+                      alt={appName}
+                      className="w-full h-full object-contain bg-white p-1"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all">
+                    <ClipboardCheck className="w-6 h-6 text-white" />
+                  </div>
+                )}
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
               </motion.div>
               <div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  SIPelan
+                  {appName}
                 </span>
                 <p className="text-xs text-gray-500 -mt-1">Pengaduan Online</p>
               </div>
@@ -615,7 +658,11 @@ export default function HomePage() {
                   
                   <div className="space-y-2 text-sm text-gray-600">
                     <div className="flex items-center space-x-2">
-                      <FileText className="w-4 h-4 text-purple-500" />
+                      <User className="w-4 h-4 text-purple-500" />
+                      <span className="font-medium">{maskName(pengaduan.nama_pelapor, pengaduan.anonim)}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <FileText className="w-4 h-4 text-gray-400" />
                       <span>{pengaduan.kategori}</span>
                     </div>
                     <div className="flex items-center space-x-2">

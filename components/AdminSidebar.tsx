@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -28,7 +28,28 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ user, onLogout }: AdminSidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [appName, setAppName] = useState('SIPelan')
+  const [appLogo, setAppLogo] = useState<string | null>(null)
   const pathname = usePathname()
+
+  // Load app settings
+  useEffect(() => {
+    const fetchAppSettings = async () => {
+      try {
+        const response = await fetch('/api/settings/app/public')
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success && result.data) {
+            setAppName(result.data.app_name || 'SIPelan')
+            setAppLogo(result.data.app_logo_url || null)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching app settings:', error)
+      }
+    }
+    fetchAppSettings()
+  }, [])
 
   const menuItems = [
     {
@@ -90,18 +111,38 @@ export default function AdminSidebar({ user, onLogout }: AdminSidebarProps) {
         <div className="p-6 border-b border-gray-200">
           {!collapsed ? (
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-xl">S</span>
-              </div>
+              {appLogo ? (
+                <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-blue-200 bg-white">
+                  <img 
+                    src={appLogo} 
+                    alt={appName}
+                    className="w-full h-full object-contain p-1"
+                  />
+                </div>
+              ) : (
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
+                  <span className="text-white font-bold text-xl">{appName.charAt(0)}</span>
+                </div>
+              )}
               <div>
-                <h1 className="text-xl font-bold text-gray-900">SIPelan</h1>
+                <h1 className="text-xl font-bold text-gray-900">{appName}</h1>
                 <p className="text-xs text-gray-500">Admin Panel</p>
               </div>
             </div>
           ) : (
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center mx-auto">
-              <span className="text-white font-bold text-xl">S</span>
-            </div>
+            appLogo ? (
+              <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-blue-200 bg-white mx-auto">
+                <img 
+                  src={appLogo} 
+                  alt={appName}
+                  className="w-full h-full object-contain p-1"
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center mx-auto">
+                <span className="text-white font-bold text-xl">{appName.charAt(0)}</span>
+              </div>
+            )
           )}
         </div>
 
@@ -189,14 +230,24 @@ export default function AdminSidebar({ user, onLogout }: AdminSidebarProps) {
         className="lg:hidden fixed left-0 top-0 h-full bg-white border-r border-gray-200 z-50 flex flex-col"
         style={{ width: 280 }}
       >
-        {/* Logo */}
+        {/* Logo - Mobile */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-xl">S</span>
-            </div>
+            {appLogo ? (
+              <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-blue-200 bg-white">
+                <img 
+                  src={appLogo} 
+                  alt={appName}
+                  className="w-full h-full object-contain p-1"
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-xl">{appName.charAt(0)}</span>
+              </div>
+            )}
             <div>
-              <h1 className="text-xl font-bold text-gray-900">SIPelan</h1>
+              <h1 className="text-xl font-bold text-gray-900">{appName}</h1>
               <p className="text-xs text-gray-500">Admin Panel</p>
             </div>
           </div>

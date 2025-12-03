@@ -1,3 +1,6 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { 
   Facebook, 
@@ -9,11 +12,45 @@ import {
   MapPin,
   FileText,
   Home,
-  Search
+  Search,
+  ClipboardCheck
 } from 'lucide-react'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
+  const [appName, setAppName] = useState('SIPelan')
+  const [appLogo, setAppLogo] = useState<string | null>(null)
+  const [socialMedia, setSocialMedia] = useState({
+    facebook: '',
+    twitter: '',
+    instagram: '',
+    youtube: ''
+  })
+
+  // Load app settings
+  useEffect(() => {
+    const fetchAppSettings = async () => {
+      try {
+        const response = await fetch('/api/settings/app/public')
+        if (response.ok) {
+          const result = await response.json()
+          if (result.success && result.data) {
+            setAppName(result.data.app_name || 'SIPelan')
+            setAppLogo(result.data.app_logo_url || null)
+            setSocialMedia({
+              facebook: result.data.facebook_url || '',
+              twitter: result.data.twitter_url || '',
+              instagram: result.data.instagram_url || '',
+              youtube: result.data.youtube_url || ''
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching app settings:', error)
+      }
+    }
+    fetchAppSettings()
+  }, [])
 
   return (
     <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
@@ -22,29 +59,50 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* About Section */}
           <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl flex items-center justify-center">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-              <h3 className="text-xl font-bold">SIPelan</h3>
+            <div className="flex items-center space-x-3 mb-4">
+              {appLogo ? (
+                <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-purple-400/50 bg-white">
+                  <img 
+                    src={appLogo} 
+                    alt={appName}
+                    className="w-full h-full object-contain p-1"
+                  />
+                </div>
+              ) : (
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center">
+                  <ClipboardCheck className="w-6 h-6 text-white" />
+                </div>
+              )}
+              <h3 className="text-xl font-bold">{appName}</h3>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed mb-4">
               Sistem Informasi Pengaduan Pelayanan Naker 
               Layanan pengaduan yang cepat, transparan, dan terpercaya.
             </p>
             <div className="flex space-x-3">
-              <a href="#" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-purple-500 transition-all">
-                <Facebook className="w-4 h-4" />
-              </a>
-              <a href="#" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-blue-500 transition-all">
-                <Twitter className="w-4 h-4" />
-              </a>
-              <a href="#" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-pink-500 transition-all">
-                <Instagram className="w-4 h-4" />
-              </a>
-              <a href="#" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-red-500 transition-all">
-                <Youtube className="w-4 h-4" />
-              </a>
+              {socialMedia.facebook && (
+                <a href={socialMedia.facebook} target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-all">
+                  <Facebook className="w-4 h-4" />
+                </a>
+              )}
+              {socialMedia.twitter && (
+                <a href={socialMedia.twitter} target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-sky-500 transition-all">
+                  <Twitter className="w-4 h-4" />
+                </a>
+              )}
+              {socialMedia.instagram && (
+                <a href={socialMedia.instagram} target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-pink-500 transition-all">
+                  <Instagram className="w-4 h-4" />
+                </a>
+              )}
+              {socialMedia.youtube && (
+                <a href={socialMedia.youtube} target="_blank" rel="noopener noreferrer" className="w-9 h-9 bg-white/10 rounded-lg flex items-center justify-center hover:bg-red-500 transition-all">
+                  <Youtube className="w-4 h-4" />
+                </a>
+              )}
+              {!socialMedia.facebook && !socialMedia.twitter && !socialMedia.instagram && !socialMedia.youtube && (
+                <p className="text-gray-500 text-sm">Belum ada sosial media</p>
+              )}
             </div>
           </div>
 
@@ -136,7 +194,7 @@ export default function Footer() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-sm text-gray-400">
-              © {currentYear} <span className="font-semibold text-white">SIPelan</span> - Dinas Tenaga Kerja. 
+              © {currentYear} <span className="font-semibold text-white">{appName}</span> - Dinas Tenaga Kerja. 
               <span className="hidden md:inline"> All rights reserved.</span>
             </p>
             <div className="flex space-x-6 text-sm text-gray-400">

@@ -30,6 +30,7 @@ import {
 import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3'
+import Footer from '@/components/Footer'
 
 interface Category {
   id: number
@@ -474,17 +475,24 @@ export default function PengaduanPage() {
             </div>
 
             {/* Opsi Anonim */}
-            <div className="flex items-start gap-3 bg-white rounded-xl border border-gray-200 p-4">
+            <div className="flex items-start gap-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200 p-4">
               <input
                 id="anonim"
                 type="checkbox"
                 checked={formData.anonim}
                 onChange={(e) => setFormData({ ...formData, anonim: e.target.checked })}
-                className="mt-1 w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                className="mt-1 w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
               />
-              <label htmlFor="anonim" className="text-sm text-gray-700">
-                <span className="font-semibold">Ajukan sebagai Anonim</span>
-                <span className="block text-gray-600 mt-1">Nama lengkap dan email Anda tidak akan ditampilkan di tampilan publik. Kami tetap menyimpannya untuk keperluan verifikasi dan komunikasi jika diperlukan.</span>
+              <label htmlFor="anonim" className="text-sm text-gray-700 cursor-pointer">
+                <span className="font-semibold text-purple-700">Sembunyikan Identitas Saya</span>
+                <span className="block text-gray-600 mt-1">
+                  {formData.anonim ? (
+                    <span className="text-purple-600 font-medium">✓ Nama Anda akan ditampilkan sebagai "Anonim" di halaman publik.</span>
+                  ) : (
+                    <span>Nama Anda akan ditampilkan dengan masking (contoh: <span className="font-mono bg-white px-1 rounded">A***d S*****i</span>) di halaman publik.</span>
+                  )}
+                </span>
+                <span className="block text-xs text-gray-500 mt-1">Data asli tetap tersimpan untuk keperluan verifikasi internal.</span>
               </label>
             </div>
 
@@ -689,141 +697,9 @@ export default function PengaduanPage() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white mt-20">
-        {/* Main Footer */}
-        <div className="container mx-auto px-4 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-            {/* Brand Section */}
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center">
-                  <ClipboardCheck className="w-7 h-7 text-white" />
-                </div>
-                <span className="text-2xl font-bold">SIPelan</span>
-              </div>
-              <p className="text-gray-400 leading-relaxed">
-                Sistem Pengaduan Layanan Online Naker - Melayani pengaduan masyarakat terkait ketenagakerjaan dengan cepat dan transparan.
-              </p>
-              <div className="flex space-x-3">
-                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
-                  <Facebook className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
-                  <Twitter className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
-                  <Instagram className="w-5 h-5" />
-                </a>
-                <a href="#" className="w-10 h-10 bg-white/10 hover:bg-gradient-to-br hover:from-purple-600 hover:to-pink-600 rounded-lg flex items-center justify-center transition-all hover:scale-110">
-                  <Youtube className="w-5 h-5" />
-                </a>
-              </div>
-            </div>
-
-            {/* Quick Links */}
-            <div>
-              <h3 className="text-lg font-bold mb-6 text-white">Menu Cepat</h3>
-              <ul className="space-y-3">
-                <li>
-                  <Link href="/" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
-                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
-                    <span>Beranda</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/pengaduan" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
-                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
-                    <span>Buat Pengaduan</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/tracking" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
-                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
-                    <span>Tracking Pengaduan</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/login" className="text-gray-400 hover:text-white transition-colors flex items-center space-x-2 group">
-                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full group-hover:w-2 group-hover:h-2 transition-all"></span>
-                    <span>Login</span>
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            {/* Layanan */}
-            <div>
-              <h3 className="text-lg font-bold mb-6 text-white">Layanan Kami</h3>
-              <ul className="space-y-3">
-                <li className="text-gray-400 flex items-start space-x-2">
-                  <ClipboardList className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
-                  <span>Pengaduan Ketenagakerjaan</span>
-                </li>
-                <li className="text-gray-400 flex items-start space-x-2">
-                  <Users className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
-                  <span>Konsultasi Hubungan Industrial</span>
-                </li>
-                <li className="text-gray-400 flex items-start space-x-2">
-                  <FileText className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
-                  <span>Informasi Peraturan Ketenagakerjaan</span>
-                </li>
-                <li className="text-gray-400 flex items-start space-x-2">
-                  <Clock className="w-5 h-5 text-purple-500 flex-shrink-0 mt-0.5" />
-                  <span>Tracking Status Real-time</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Contact Info */}
-            <div>
-              <h3 className="text-lg font-bold mb-6 text-white">Hubungi Kami</h3>
-              <ul className="space-y-4">
-                <li className="flex items-start space-x-3 text-gray-400">
-                  <MapPin className="w-5 h-5 text-purple-500 flex-shrink-0 mt-1" />
-                  <span>Jl. Disnaker No. 123<br />Jakarta Pusat, DKI Jakarta<br />10110</span>
-                </li>
-                <li className="flex items-center space-x-3 text-gray-400">
-                  <Phone className="w-5 h-5 text-purple-500 flex-shrink-0" />
-                  <span>(021) 1234-5678</span>
-                </li>
-                <li className="flex items-center space-x-3 text-gray-400">
-                  <Mail className="w-5 h-5 text-purple-500 flex-shrink-0" />
-                  <span>info@disnaker.go.id</span>
-                </li>
-              </ul>
-              <div className="mt-6 p-4 bg-white/5 rounded-xl border border-white/10">
-                <p className="text-sm text-gray-400 mb-2">Jam Layanan:</p>
-                <p className="text-white font-semibold">Senin - Jumat</p>
-                <p className="text-gray-400 text-sm">08:00 - 16:00 WIB</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Footer */}
-        <div className="border-t border-white/10">
-          <div className="container mx-auto px-4 py-6">
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <p className="text-gray-400 text-sm text-center md:text-left">
-                &copy; 2024 Dinas Ketenagakerjaan. All rights reserved.
-              </p>
-              <div className="flex items-center space-x-6 text-sm">
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Kebijakan Privasi
-                </a>
-                <span className="text-gray-600">|</span>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Syarat & Ketentuan
-                </a>
-                <span className="text-gray-600">|</span>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  FAQ
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <div className="mt-20">
+        <Footer />
+      </div>
     </div>
   )
 }
