@@ -77,22 +77,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update each setting
+    // Update or insert each setting (upsert)
     const updates = []
     for (const [key, value] of Object.entries(settings)) {
       const stringValue = String(value)
       
+      // Determine setting type
+      let settingType = 'string'
+      if (typeof value === 'boolean') {
+        settingType = 'boolean'
+      } else if (typeof value === 'number') {
+        settingType = 'number'
+      }
+      
+      // Use upsert to insert if not exists, update if exists
       const { error } = await supabaseAdmin
         .from('app_settings')
-        .update({
+        .upsert({
+          setting_key: key,
           setting_value: stringValue,
+          setting_type: settingType,
           updated_by: user.id,
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'setting_key'
         })
-        .eq('setting_key', key)
 
       if (error) {
-        console.error(`Error updating ${key}:`, error)
+        console.error(`Error upserting ${key}:`, error)
         updates.push({ key, success: false, error: error.message })
       } else {
         updates.push({ key, success: true })

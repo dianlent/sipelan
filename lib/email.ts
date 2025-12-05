@@ -1,19 +1,88 @@
 import nodemailer from 'nodemailer'
+import { supabaseAdmin } from '@/lib/supabase'
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS
+interface SmtpConfig {
+  host: string
+  port: number
+  user: string
+  pass: string
+}
+
+// Cache for SMTP config to avoid fetching from DB on every email
+let smtpConfigCache: SmtpConfig | null = null
+let smtpConfigCacheTime: number = 0
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+async function getSmtpConfig(): Promise<SmtpConfig | null> {
+  // Check cache first
+  if (smtpConfigCache && Date.now() - smtpConfigCacheTime < CACHE_TTL) {
+    return smtpConfigCache
   }
-})
+
+  try {
+    const { data: settings, error } = await supabaseAdmin
+      .from('app_settings')
+      .select('setting_key, setting_value')
+      .in('setting_key', ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass'])
+
+    if (error || !settings || settings.length === 0) {
+      console.warn('SMTP settings not found in database')
+      return null
+    }
+
+    const configMap: Record<string, string> = {}
+    settings.forEach(s => {
+      configMap[s.setting_key] = s.setting_value
+    })
+
+    // Validate required fields
+    if (!configMap.smtp_host || !configMap.smtp_user || !configMap.smtp_pass) {
+      console.warn('Incomplete SMTP configuration in database')
+      return null
+    }
+
+    smtpConfigCache = {
+      host: configMap.smtp_host,
+      port: parseInt(configMap.smtp_port || '587'),
+      user: configMap.smtp_user,
+      pass: configMap.smtp_pass
+    }
+    smtpConfigCacheTime = Date.now()
+
+    return smtpConfigCache
+  } catch (error) {
+    console.error('Error fetching SMTP config:', error)
+    return null
+  }
+}
+
+// Clear SMTP cache (call this when settings are updated)
+export function clearSmtpCache() {
+  smtpConfigCache = null
+  smtpConfigCacheTime = 0
+}
 
 export async function sendEmail(to: string, subject: string, html: string) {
   try {
+    const smtpConfig = await getSmtpConfig()
+    
+    if (!smtpConfig) {
+      console.error('SMTP not configured. Please configure SMTP settings in Admin > Settings')
+      return { success: false, error: 'SMTP not configured' }
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: smtpConfig.host,
+      port: smtpConfig.port,
+      secure: false,
+      auth: {
+        user: smtpConfig.user,
+        pass: smtpConfig.pass
+      }
+    })
+
     const info = await transporter.sendMail({
-      from: `"SIPelan Disnaker" <${process.env.SMTP_USER}>`,
+      from: `"SIPelan Disnaker" <${smtpConfig.user}>`,
       to,
       subject,
       html

@@ -1,10 +1,8 @@
 {
   "/page": "app/page.js",
-  "/dashboard/admin/page": "app/dashboard/admin/page.js",
-  "/login/page": "app/login/page.js",
-  "/admin/page": "app/admin/page.js",
-  "/pengaduan/page": "app/pengaduan/page.js",
   "/api/settings/app/public/route": "app/api/settings/app/public/route.js",
-  "/api/pengaduan/route": "app/api/pengaduan/route.js",
-  "/api/stats/route": "app/api/stats/route.js"
+  "/api/stats/route": "app/api/stats/route.js",
+  "/api/auth/me/route": "app/api/auth/me/route.js",
+  "/api/settings/public/route": "app/api/settings/public/route.js",
+  "/api/pengaduan/route": "app/api/pengaduan/route.js"
 }

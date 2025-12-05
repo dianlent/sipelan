@@ -31,6 +31,7 @@ import toast from 'react-hot-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3'
 import Footer from '@/components/Footer'
+import AppLogo from '@/components/AppLogo'
 
 interface Category {
   id: number
@@ -320,23 +321,7 @@ export default function PengaduanPage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-3 group">
-              <motion.div 
-                whileHover={{ scale: 1.05, rotate: 5 }}
-                className="relative"
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all">
-                  <ClipboardCheck className="w-6 h-6 text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-              </motion.div>
-              <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  SIPelan
-                </span>
-                <p className="text-xs text-gray-500 -mt-1">Pengaduan Online</p>
-              </div>
-            </Link>
+            <AppLogo size="md" showSubtitle={true} />
             
             {/* Navigation Links */}
             <div className="hidden lg:flex items-center space-x-1">

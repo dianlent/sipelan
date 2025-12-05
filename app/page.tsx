@@ -32,6 +32,7 @@ import {
   Eye
 } from 'lucide-react'
 import Footer from '@/components/Footer'
+import AppLogo from '@/components/AppLogo'
 
 interface Stats {
   totalUsers: number
@@ -63,13 +64,10 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true)
   const [recentPengaduan, setRecentPengaduan] = useState<RecentPengaduan[]>([])
   const [isLoadingPengaduan, setIsLoadingPengaduan] = useState(true)
-  const [appName, setAppName] = useState('SIPelan')
-  const [appLogo, setAppLogo] = useState<string | null>(null)
 
   useEffect(() => {
     fetchStats()
     fetchRecentPengaduan()
-    fetchAppSettings()
   }, [])
 
   const fetchStats = async () => {
@@ -113,21 +111,6 @@ export default function HomePage() {
     }
   }
 
-  const fetchAppSettings = async () => {
-    try {
-      const response = await fetch('/api/settings/app/public')
-      if (response.ok) {
-        const result = await response.json()
-        if (result.success && result.data) {
-          setAppName(result.data.app_name || 'SIPelan')
-          setAppLogo(result.data.app_logo_url)
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching app settings:', error)
-    }
-  }
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('id-ID', {
@@ -166,33 +149,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-3 group">
-              <motion.div 
-                whileHover={{ scale: 1.05, rotate: 5 }}
-                className="relative"
-              >
-                {appLogo ? (
-                  <div className="w-12 h-12 rounded-2xl overflow-hidden shadow-lg group-hover:shadow-xl transition-all border-2 border-purple-200">
-                    <img 
-                      src={appLogo} 
-                      alt={appName}
-                      className="w-full h-full object-contain bg-white p-1"
-                    />
-                  </div>
-                ) : (
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all">
-                    <ClipboardCheck className="w-6 h-6 text-white" />
-                  </div>
-                )}
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-              </motion.div>
-              <div>
-                <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  {appName}
-                </span>
-                <p className="text-xs text-gray-500 -mt-1">Pengaduan Online</p>
-              </div>
-            </Link>
+            <AppLogo size="md" showSubtitle={true} />
             
             {/* Navigation Links */}
             <div className="hidden lg:flex items-center space-x-1">

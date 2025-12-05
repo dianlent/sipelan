@@ -112,6 +112,12 @@ export default function SettingsPage() {
           if (data.success && data.data) {
             setSettings(prev => ({
               ...prev,
+              system: {
+                smtp_host: data.data.smtp_host || '',
+                smtp_port: data.data.smtp_port || '587',
+                smtp_user: data.data.smtp_user || '',
+                smtp_pass: data.data.smtp_pass || ''
+              },
               recaptcha: {
                 enabled: data.data.recaptcha_enabled || false,
                 site_key: data.data.recaptcha_site_key || '',
@@ -222,12 +228,38 @@ export default function SettingsPage() {
   }
 
   const handleSaveSystem = async () => {
+    // Validate SMTP settings
+    if (!settings.system.smtp_host || !settings.system.smtp_user || !settings.system.smtp_pass) {
+      toast.error('Harap lengkapi semua field SMTP')
+      return
+    }
+
     setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      toast.success('Pengaturan sistem berhasil disimpan')
-    } catch (error) {
-      toast.error('Gagal menyimpan pengaturan')
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          settings: {
+            smtp_host: settings.system.smtp_host,
+            smtp_port: settings.system.smtp_port || '587',
+            smtp_user: settings.system.smtp_user,
+            smtp_pass: settings.system.smtp_pass
+          }
+        })
+      })
+
+      const result = await response.json()
+      
+      if (result.success) {
+        toast.success('Pengaturan SMTP berhasil disimpan')
+      } else {
+        throw new Error(result.message || 'Gagal menyimpan pengaturan')
+      }
+    } catch (error: any) {
+      console.error('Error saving SMTP settings:', error)
+      toast.error(error.message || 'Gagal menyimpan pengaturan')
     } finally {
       setIsLoading(false)
     }
