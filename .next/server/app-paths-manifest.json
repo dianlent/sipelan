@@ -1,8 +1,0 @@
-{
-  "/api/settings/app/public/route": "app/api/settings/app/public/route.js",
-  "/api/stats/route": "app/api/stats/route.js",
-  "/page": "app/page.js",
-  "/api/pengaduan/route": "app/api/pengaduan/route.js",
-  "/api/auth/me/route": "app/api/auth/me/route.js",
-  "/api/settings/public/route": "app/api/settings/public/route.js"
-}
