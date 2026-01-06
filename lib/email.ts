@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer'
-import { supabaseAdmin } from '@/lib/supabase'
+import { query } from '@/lib/db'
 
 interface SmtpConfig {
   host: string
@@ -20,18 +20,22 @@ async function getSmtpConfig(): Promise<SmtpConfig | null> {
   }
 
   try {
-    const { data: settings, error } = await supabaseAdmin
-      .from('app_settings')
-      .select('setting_key, setting_value')
-      .in('setting_key', ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass'])
+    const { rows } = await query<{ setting_key: string; setting_value: string }>(
+      `
+        SELECT setting_key, setting_value
+        FROM app_settings
+        WHERE setting_key = ANY($1::text[])
+      `,
+      [['smtp_host', 'smtp_port', 'smtp_user', 'smtp_pass']]
+    )
 
-    if (error || !settings || settings.length === 0) {
+    if (!rows || rows.length === 0) {
       console.warn('SMTP settings not found in database')
       return null
     }
 
     const configMap: Record<string, string> = {}
-    settings.forEach(s => {
+    rows.forEach(s => {
       configMap[s.setting_key] = s.setting_value
     })
 

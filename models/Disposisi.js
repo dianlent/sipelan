@@ -1,22 +1,45 @@
-const supabase = require('../config/database');
+const db = require('../config/database');
 
 class Disposisi {
     static async create(data) {
         try {
-            const { data: result, error } = await supabase
-                .from('disposisi')
-                .insert([data])
-                .select(`
-                    *,
-                    pengaduan (kode_pengaduan, judul_pengaduan),
-                    dari_bidang:bidang!disposisi_dari_bidang_id_fkey (nama_bidang, kode_bidang),
-                    ke_bidang:bidang!disposisi_ke_bidang_id_fkey (nama_bidang, kode_bidang),
-                    users (username, nama_lengkap)
-                `)
-                .single();
+            const { rows } = await db.query(
+                `
+                    INSERT INTO disposisi (pengaduan_id, dari_bidang_id, ke_bidang_id, keterangan, user_id, created_at)
+                    VALUES ($1, $2, $3, $4, $5, NOW())
+                    RETURNING *
+                `,
+                [
+                    data.pengaduan_id,
+                    data.dari_bidang_id || null,
+                    data.ke_bidang_id,
+                    data.keterangan,
+                    data.user_id || null
+                ]
+            );
 
-            if (error) throw error;
-            return result;
+            const disposisi = rows[0];
+
+            const detailResult = await db.query(
+                `
+                    SELECT
+                        d.*,
+                        json_build_object('kode_pengaduan', p.kode_pengaduan, 'judul_pengaduan', p.judul_pengaduan) AS pengaduan,
+                        json_build_object('nama_bidang', dbi.nama_bidang, 'kode_bidang', dbi.kode_bidang) AS dari_bidang,
+                        json_build_object('nama_bidang', kbi.nama_bidang, 'kode_bidang', kbi.kode_bidang) AS ke_bidang,
+                        json_build_object('username', u.username, 'nama_lengkap', u.nama_lengkap) AS users
+                    FROM disposisi d
+                    LEFT JOIN pengaduan p ON p.id = d.pengaduan_id
+                    LEFT JOIN bidang dbi ON dbi.id = d.dari_bidang_id
+                    LEFT JOIN bidang kbi ON kbi.id = d.ke_bidang_id
+                    LEFT JOIN users u ON u.id = d.user_id
+                    WHERE d.id = $1
+                    LIMIT 1
+                `,
+                [disposisi.id]
+            );
+
+            return detailResult.rows[0];
         } catch (error) {
             throw new Error('Error creating disposisi: ' + error.message);
         }
@@ -24,20 +47,26 @@ class Disposisi {
 
     static async findByPengaduanId(pengaduanId) {
         try {
-            const { data, error } = await supabase
-                .from('disposisi')
-                .select(`
-                    *,
-                    pengaduan (kode_pengaduan, judul_pengaduan),
-                    dari_bidang:bidang!disposisi_dari_bidang_id_fkey (nama_bidang, kode_bidang),
-                    ke_bidang:bidang!disposisi_ke_bidang_id_fkey (nama_bidang, kode_bidang),
-                    users (username, nama_lengkap)
-                `)
-                .eq('pengaduan_id', pengaduanId)
-                .order('created_at', { ascending: true });
+            const { rows } = await db.query(
+                `
+                    SELECT
+                        d.*,
+                        json_build_object('kode_pengaduan', p.kode_pengaduan, 'judul_pengaduan', p.judul_pengaduan) AS pengaduan,
+                        json_build_object('nama_bidang', dbi.nama_bidang, 'kode_bidang', dbi.kode_bidang) AS dari_bidang,
+                        json_build_object('nama_bidang', kbi.nama_bidang, 'kode_bidang', kbi.kode_bidang) AS ke_bidang,
+                        json_build_object('username', u.username, 'nama_lengkap', u.nama_lengkap) AS users
+                    FROM disposisi d
+                    LEFT JOIN pengaduan p ON p.id = d.pengaduan_id
+                    LEFT JOIN bidang dbi ON dbi.id = d.dari_bidang_id
+                    LEFT JOIN bidang kbi ON kbi.id = d.ke_bidang_id
+                    LEFT JOIN users u ON u.id = d.user_id
+                    WHERE d.pengaduan_id = $1
+                    ORDER BY d.created_at ASC
+                `,
+                [pengaduanId]
+            );
 
-            if (error) throw error;
-            return data;
+            return rows;
         } catch (error) {
             throw new Error('Error finding disposisi by pengaduan: ' + error.message);
         }
@@ -46,24 +75,35 @@ class Disposisi {
     static async findByBidang(bidangId, page = 1, limit = 10) {
         try {
             const offset = (page - 1) * limit;
-            
-            const { data, error, count } = await supabase
-                .from('disposisi')
-                .select(`
-                    *,
-                    pengaduan (kode_pengaduan, judul_pengaduan, status),
-                    dari_bidang:bidang!disposisi_dari_bidang_id_fkey (nama_bidang, kode_bidang),
-                    ke_bidang:bidang!disposisi_ke_bidang_id_fkey (nama_bidang, kode_bidang),
-                    users (username, nama_lengkap)
-                `, { count: 'exact' })
-                .eq('ke_bidang_id', bidangId)
-                .order('created_at', { ascending: false })
-                .range(offset, offset + limit - 1);
 
-            if (error) throw error;
-            
+            const countResult = await db.query(
+                'SELECT COUNT(*)::text AS count FROM disposisi WHERE ke_bidang_id = $1',
+                [bidangId]
+            );
+            const count = parseInt(countResult.rows[0]?.count || '0', 10);
+
+            const { rows } = await db.query(
+                `
+                    SELECT
+                        d.*,
+                        json_build_object('kode_pengaduan', p.kode_pengaduan, 'judul_pengaduan', p.judul_pengaduan, 'status', p.status) AS pengaduan,
+                        json_build_object('nama_bidang', dbi.nama_bidang, 'kode_bidang', dbi.kode_bidang) AS dari_bidang,
+                        json_build_object('nama_bidang', kbi.nama_bidang, 'kode_bidang', kbi.kode_bidang) AS ke_bidang,
+                        json_build_object('username', u.username, 'nama_lengkap', u.nama_lengkap) AS users
+                    FROM disposisi d
+                    LEFT JOIN pengaduan p ON p.id = d.pengaduan_id
+                    LEFT JOIN bidang dbi ON dbi.id = d.dari_bidang_id
+                    LEFT JOIN bidang kbi ON kbi.id = d.ke_bidang_id
+                    LEFT JOIN users u ON u.id = d.user_id
+                    WHERE d.ke_bidang_id = $1
+                    ORDER BY d.created_at DESC
+                    LIMIT $2 OFFSET $3
+                `,
+                [bidangId, limit, offset]
+            );
+
             return {
-                data,
+                data: rows,
                 total: count,
                 page,
                 totalPages: Math.ceil(count / limit)
@@ -76,31 +116,49 @@ class Disposisi {
     static async findAll(page = 1, limit = 10, filters = {}) {
         try {
             const offset = (page - 1) * limit;
-            let query = supabase
-                .from('disposisi')
-                .select(`
-                    *,
-                    pengaduan (kode_pengaduan, judul_pengaduan, status),
-                    dari_bidang:bidang!disposisi_dari_bidang_id_fkey (nama_bidang, kode_bidang),
-                    ke_bidang:bidang!disposisi_ke_bidang_id_fkey (nama_bidang, kode_bidang),
-                    users (username, nama_lengkap)
-                `, { count: 'exact' })
-                .order('created_at', { ascending: false })
-                .range(offset, offset + limit - 1);
+            const conditions = [];
+            const params = [];
 
             if (filters.dari_bidang_id) {
-                query = query.eq('dari_bidang_id', filters.dari_bidang_id);
+                params.push(filters.dari_bidang_id);
+                conditions.push(`d.dari_bidang_id = $${params.length}`);
             }
             if (filters.ke_bidang_id) {
-                query = query.eq('ke_bidang_id', filters.ke_bidang_id);
+                params.push(filters.ke_bidang_id);
+                conditions.push(`d.ke_bidang_id = $${params.length}`);
             }
 
-            const { data, error, count } = await query;
+            const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-            if (error) throw error;
-            
+            const countResult = await db.query(
+                `SELECT COUNT(*)::text AS count FROM disposisi d ${whereClause}`,
+                params
+            );
+            const count = parseInt(countResult.rows[0]?.count || '0', 10);
+
+            const listParams = [...params, limit, offset];
+            const { rows } = await db.query(
+                `
+                    SELECT
+                        d.*,
+                        json_build_object('kode_pengaduan', p.kode_pengaduan, 'judul_pengaduan', p.judul_pengaduan, 'status', p.status) AS pengaduan,
+                        json_build_object('nama_bidang', dbi.nama_bidang, 'kode_bidang', dbi.kode_bidang) AS dari_bidang,
+                        json_build_object('nama_bidang', kbi.nama_bidang, 'kode_bidang', kbi.kode_bidang) AS ke_bidang,
+                        json_build_object('username', u.username, 'nama_lengkap', u.nama_lengkap) AS users
+                    FROM disposisi d
+                    LEFT JOIN pengaduan p ON p.id = d.pengaduan_id
+                    LEFT JOIN bidang dbi ON dbi.id = d.dari_bidang_id
+                    LEFT JOIN bidang kbi ON kbi.id = d.ke_bidang_id
+                    LEFT JOIN users u ON u.id = d.user_id
+                    ${whereClause}
+                    ORDER BY d.created_at DESC
+                    LIMIT $${listParams.length - 1} OFFSET $${listParams.length}
+                `,
+                listParams
+            );
+
             return {
-                data,
+                data: rows,
                 total: count,
                 page,
                 totalPages: Math.ceil(count / limit)
@@ -112,18 +170,16 @@ class Disposisi {
 
     static async updatePengaduanBidang(pengaduanId, bidangId) {
         try {
-            const { data, error } = await supabase
-                .from('pengaduan')
-                .update({ 
-                    bidang_id: bidangId,
-                    updated_at: new Date()
-                })
-                .eq('id', pengaduanId)
-                .select()
-                .single();
-
-            if (error) throw error;
-            return data;
+            const { rows } = await db.query(
+                `
+                    UPDATE pengaduan
+                    SET bidang_id = $1, updated_at = NOW()
+                    WHERE id = $2
+                    RETURNING *
+                `,
+                [bidangId, pengaduanId]
+            );
+            return rows[0];
         } catch (error) {
             throw new Error('Error updating pengaduan bidang: ' + error.message);
         }
@@ -131,12 +187,7 @@ class Disposisi {
 
     static async delete(id) {
         try {
-            const { error } = await supabase
-                .from('disposisi')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
+            await db.query('DELETE FROM disposisi WHERE id = $1', [id]);
             return true;
         } catch (error) {
             throw new Error('Error deleting disposisi: ' + error.message);
@@ -145,13 +196,8 @@ class Disposisi {
 
     static async getBidangList() {
         try {
-            const { data, error } = await supabase
-                .from('bidang')
-                .select('*')
-                .order('nama_bidang');
-
-            if (error) throw error;
-            return data;
+            const { rows } = await db.query('SELECT * FROM bidang ORDER BY nama_bidang');
+            return rows;
         } catch (error) {
             throw new Error('Error getting bidang list: ' + error.message);
         }

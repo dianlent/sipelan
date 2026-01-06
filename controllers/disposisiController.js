@@ -2,7 +2,7 @@ const { body, validationResult } = require('express-validator');
 const Disposisi = require('../models/Disposisi');
 const Pengaduan = require('../models/Pengaduan');
 const { sendEmail, generateDisposisiEmailTemplate } = require('../config/email');
-const supabase = require('../config/database');
+const db = require('../config/database');
 
 const disposisiValidation = [
     body('pengaduan_id').isUUID().withMessage('Pengaduan ID harus UUID'),
@@ -68,17 +68,22 @@ const createDisposisi = async (req, res) => {
         await Disposisi.updatePengaduanBidang(pengaduan_id, ke_bidang_id);
 
         try {
-            const { data: bidangData } = await supabase
-                .from('bidang')
-                .select('email_bidang, nama_bidang')
-                .eq('id', ke_bidang_id)
-                .single();
+            const bidangResult = await db.query(
+                'SELECT email_bidang, nama_bidang FROM bidang WHERE id = $1 LIMIT 1',
+                [ke_bidang_id]
+            );
+            const bidangData = bidangResult.rows[0];
 
             if (bidangData && bidangData.email_bidang) {
-                const dariBidangName = dari_bidang_id ? 
-                    (await supabase.from('bidang').select('nama_bidang').eq('id', dari_bidang_id).single()).data?.nama_bidang || 'Admin' 
-                    : 'Admin';
-                
+                let dariBidangName = 'Admin';
+                if (dari_bidang_id) {
+                    const dariResult = await db.query(
+                        'SELECT nama_bidang FROM bidang WHERE id = $1 LIMIT 1',
+                        [dari_bidang_id]
+                    );
+                    dariBidangName = dariResult.rows[0]?.nama_bidang || 'Admin';
+                }
+
                 const emailTemplate = generateDisposisiEmailTemplate(pengaduan, dariBidangName, bidangData.nama_bidang);
                 await sendEmail(bidangData.email_bidang, `Disposisi Pengaduan - ${pengaduan.kode_pengaduan}`, emailTemplate);
             }

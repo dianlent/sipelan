@@ -1,17 +1,16 @@
-const { createClient } = require('@supabase/supabase-js');
+const { Pool } = require('pg');
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
+const databaseUrl = process.env.DATABASE_URL;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error('Missing Supabase configuration. Please check your environment variables.');
+if (!databaseUrl) {
+    throw new Error('Missing DATABASE_URL configuration. Please check your environment variables.');
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
-    }
+const sslEnabled = process.env.PGSSLMODE === 'require' || process.env.PGSSLMODE === 'true' || process.env.DATABASE_SSL === 'true';
+
+const pool = new Pool({
+    connectionString: databaseUrl,
+    ssl: sslEnabled ? { rejectUnauthorized: false } : undefined
 });
 
-module.exports = supabase;
+module.exports = pool;

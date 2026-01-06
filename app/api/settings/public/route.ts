@@ -1,28 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { query } from '@/lib/db'
 
 // GET - Get public settings (no auth required)
 export async function GET(request: NextRequest) {
   try {
-    const { data: settings, error } = await supabaseAdmin
-      .from('app_settings')
-      .select('setting_key, setting_value, setting_type')
-      .eq('is_public', true)
-
-    if (error) {
-      console.error('Error fetching public settings:', error)
-      return NextResponse.json(
-        { success: false, message: 'Failed to fetch settings' },
-        { status: 500 }
-      )
-    }
+    const { rows } = await query(
+      `
+        SELECT setting_key, setting_value, setting_type
+        FROM app_settings
+        WHERE is_public = true
+      `
+    )
 
     // Convert to object format
     const settingsObject: Record<string, any> = {}
-    settings.forEach(setting => {
+    rows.forEach(setting => {
       let value = setting.setting_value
       
-      // Parse based on type
       if (setting.setting_type === 'boolean') {
         value = value === 'true'
       } else if (setting.setting_type === 'number') {

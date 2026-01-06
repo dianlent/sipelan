@@ -1,20 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const supabase = require('../config/database');
+const db = require('../config/database');
 const { authenticateToken, authorizeRoles } = require('../middleware/auth');
 
 router.get('/kategori', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('kategori_pengaduan')
-            .select('*')
-            .order('nama_kategori');
-
-        if (error) throw error;
+        const { rows } = await db.query('SELECT * FROM kategori_pengaduan ORDER BY nama_kategori');
 
         res.json({
             success: true,
-            data: data
+            data: rows
         });
     } catch (error) {
         console.error('Get kategori error:', error);
@@ -27,16 +22,11 @@ router.get('/kategori', async (req, res) => {
 
 router.get('/bidang', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('bidang')
-            .select('*')
-            .order('nama_bidang');
-
-        if (error) throw error;
+        const { rows } = await db.query('SELECT * FROM bidang ORDER BY nama_bidang');
 
         res.json({
             success: true,
-            data: data
+            data: rows
         });
     } catch (error) {
         console.error('Get bidang error:', error);
@@ -47,9 +37,9 @@ router.get('/bidang', async (req, res) => {
     }
 });
 
-router.post('/kategori', 
-    authenticateToken, 
-    authorizeRoles('admin'), 
+router.post('/kategori',
+    authenticateToken,
+    authorizeRoles('admin'),
     async (req, res) => {
         try {
             const { nama_kategori, deskripsi } = req.body;
@@ -61,18 +51,19 @@ router.post('/kategori',
                 });
             }
 
-            const { data, error } = await supabase
-                .from('kategori_pengaduan')
-                .insert([{ nama_kategori, deskripsi }])
-                .select()
-                .single();
-
-            if (error) throw error;
+            const { rows } = await db.query(
+                `
+                    INSERT INTO kategori_pengaduan (nama_kategori, deskripsi)
+                    VALUES ($1, $2)
+                    RETURNING *
+                `,
+                [nama_kategori, deskripsi || null]
+            );
 
             res.status(201).json({
                 success: true,
                 message: 'Kategori berhasil ditambahkan',
-                data: data
+                data: rows[0]
             });
         } catch (error) {
             console.error('Create kategori error:', error);
@@ -84,24 +75,27 @@ router.post('/kategori',
     }
 );
 
-router.put('/kategori/:id', 
-    authenticateToken, 
-    authorizeRoles('admin'), 
+router.put('/kategori/:id',
+    authenticateToken,
+    authorizeRoles('admin'),
     async (req, res) => {
         try {
             const { id } = req.params;
             const { nama_kategori, deskripsi } = req.body;
 
-            const { data, error } = await supabase
-                .from('kategori_pengaduan')
-                .update({ nama_kategori, deskripsi, updated_at: new Date() })
-                .eq('id', id)
-                .select()
-                .single();
+            const { rows } = await db.query(
+                `
+                    UPDATE kategori_pengaduan
+                    SET nama_kategori = $1,
+                        deskripsi = $2,
+                        updated_at = NOW()
+                    WHERE id = $3
+                    RETURNING *
+                `,
+                [nama_kategori, deskripsi || null, id]
+            );
 
-            if (error) throw error;
-
-            if (!data) {
+            if (!rows[0]) {
                 return res.status(404).json({
                     success: false,
                     message: 'Kategori tidak ditemukan'
@@ -111,7 +105,7 @@ router.put('/kategori/:id',
             res.json({
                 success: true,
                 message: 'Kategori berhasil diperbarui',
-                data: data
+                data: rows[0]
             });
         } catch (error) {
             console.error('Update kategori error:', error);
@@ -123,19 +117,14 @@ router.put('/kategori/:id',
     }
 );
 
-router.delete('/kategori/:id', 
-    authenticateToken, 
-    authorizeRoles('admin'), 
+router.delete('/kategori/:id',
+    authenticateToken,
+    authorizeRoles('admin'),
     async (req, res) => {
         try {
             const { id } = req.params;
 
-            const { error } = await supabase
-                .from('kategori_pengaduan')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
+            await db.query('DELETE FROM kategori_pengaduan WHERE id = $1', [id]);
 
             res.json({
                 success: true,
@@ -151,9 +140,9 @@ router.delete('/kategori/:id',
     }
 );
 
-router.get('/users', 
-    authenticateToken, 
-    authorizeRoles('admin'), 
+router.get('/users',
+    authenticateToken,
+    authorizeRoles('admin'),
     async (req, res) => {
         try {
             const page = parseInt(req.query.page) || 1;
@@ -161,24 +150,44 @@ router.get('/users',
             const { role, bidang_id, is_active } = req.query;
 
             const offset = (page - 1) * limit;
-            let query = supabase
-                .from('users')
-                .select(`
-                    *,
-                    bidang (nama_bidang, kode_bidang)
-                `, { count: 'exact' })
-                .order('created_at', { ascending: false })
-                .range(offset, offset + limit - 1);
+            const conditions = [];
+            const params = [];
 
-            if (role) query = query.eq('role', role);
-            if (bidang_id) query = query.eq('bidang_id', bidang_id);
-            if (is_active !== undefined) query = query.eq('is_active', is_active);
+            if (role) {
+                params.push(role);
+                conditions.push(`u.role = $${params.length}`);
+            }
+            if (bidang_id) {
+                params.push(bidang_id);
+                conditions.push(`u.bidang_id = $${params.length}`);
+            }
+            if (is_active !== undefined) {
+                params.push(is_active);
+                conditions.push(`u.is_active = $${params.length}`);
+            }
 
-            const { data, error, count } = await query;
+            const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-            if (error) throw error;
+            const countResult = await db.query(
+                `SELECT COUNT(*)::text AS count FROM users u ${whereClause}`,
+                params
+            );
+            const count = parseInt(countResult.rows[0]?.count || '0', 10);
 
-            const usersWithoutPasswords = data.map(user => {
+            const listParams = [...params, limit, offset];
+            const { rows } = await db.query(
+                `
+                    SELECT u.*, b.nama_bidang, b.kode_bidang
+                    FROM users u
+                    LEFT JOIN bidang b ON b.id = u.bidang_id
+                    ${whereClause}
+                    ORDER BY u.created_at DESC
+                    LIMIT $${listParams.length - 1} OFFSET $${listParams.length}
+                `,
+                listParams
+            );
+
+            const usersWithoutPasswords = rows.map(user => {
                 const { password_hash, ...userWithoutPassword } = user;
                 return userWithoutPassword;
             });

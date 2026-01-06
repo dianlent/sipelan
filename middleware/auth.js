@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const supabase = require('../config/database');
+const db = require('../config/database');
 
 const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -15,13 +15,14 @@ const authenticateToken = async (req, res, next) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        const { data: user, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', decoded.userId)
-            .single();
+        const { rows } = await db.query(
+            'SELECT * FROM users WHERE id = $1 LIMIT 1',
+            [decoded.userId]
+        );
 
-        if (error || !user || !user.is_active) {
+        const user = rows[0];
+
+        if (!user || !user.is_active) {
             return res.status(401).json({
                 success: false,
                 message: 'Invalid or inactive user'

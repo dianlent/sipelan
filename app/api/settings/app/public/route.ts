@@ -1,30 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { query } from '@/lib/db'
 
 // GET - Get app settings (public, no auth required)
 export async function GET(request: NextRequest) {
   try {
-    // Fetch app settings using key-value structure
-    const { data: settings, error } = await supabaseAdmin
-      .from('app_settings')
-      .select('setting_key, setting_value')
-      .in('setting_key', ['app_name', 'app_logo_url', 'facebook_url', 'twitter_url', 'instagram_url', 'youtube_url'])
+    const { rows } = await query(
+      `
+        SELECT setting_key, setting_value
+        FROM app_settings
+        WHERE setting_key = ANY($1::text[])
+      `,
+      [['app_name', 'app_logo_url', 'facebook_url', 'twitter_url', 'instagram_url', 'youtube_url']]
+    )
 
-    if (error) {
-      console.error('Error fetching app settings:', error)
-      // Return default values if no settings found
-      return NextResponse.json({
-        success: true,
-        data: {
-          app_name: 'SIPelan',
-          app_logo_url: null
-        }
-      })
-    }
-
-    // Convert to object
     const settingsObject: Record<string, string> = {}
-    settings?.forEach(setting => {
+    rows.forEach(setting => {
       settingsObject[setting.setting_key] = setting.setting_value
     })
 

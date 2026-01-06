@@ -1,16 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
-})
+import { query } from '@/lib/db'
 
 export async function PUT(
   request: NextRequest,
@@ -34,15 +24,19 @@ export async function PUT(
     }
 
     // Check if username or email already exists (excluding current user)
-    const { data: existingUsers } = await supabaseAdmin
-      .from('users')
-      .select('id, username, email')
-      .or(`username.eq.${username},email.eq.${email}`)
-      .neq('id', userId)
+    const existingUsers = await query(
+      `
+        SELECT id, username, email
+        FROM users
+        WHERE (username = $1 OR email = $2)
+          AND id <> $3
+      `,
+      [username, email, userId]
+    )
 
-    if (existingUsers && existingUsers.length > 0) {
-      const duplicateUsername = existingUsers.find(u => u.username === username)
-      const duplicateEmail = existingUsers.find(u => u.email === email)
+    if (existingUsers.rows.length > 0) {
+      const duplicateUsername = existingUsers.rows.find(u => u.username === username)
+      const duplicateEmail = existingUsers.rows.find(u => u.email === email)
       
       if (duplicateUsername) {
         return NextResponse.json(
@@ -58,46 +52,46 @@ export async function PUT(
       }
     }
 
-    // Prepare update data
-    const updateData: any = {
-      nama_lengkap,
-      email,
-      username,
-      role,
-      updated_at: new Date().toISOString()
-    }
+    const updateFields = ['nama_lengkap', 'email', 'username', 'role']
+    const updateValues: Array<string | number> = [nama_lengkap, email, username, role]
+    const setClauses = updateFields.map((field, index) => `${field} = $${index + 1}`)
 
-    // Hash password if provided
     if (password && password.trim() !== '') {
       const salt = await bcrypt.genSalt(10)
       const hashedPassword = await bcrypt.hash(password, salt)
-      updateData.password_hash = hashedPassword
+      updateValues.push(hashedPassword)
+      setClauses.push(`password_hash = $${updateValues.length}`)
       console.log('Password will be updated')
     }
 
-    // Update user
-    const { data, error } = await supabaseAdmin
-      .from('users')
-      .update(updateData)
-      .eq('id', userId)
-      .select()
-      .single()
+    updateValues.push(userId)
 
-    if (error) {
-      console.error('Supabase error:', error)
+    const { rows } = await query(
+      `
+        UPDATE users
+        SET ${setClauses.join(', ')}, updated_at = NOW()
+        WHERE id = $${updateValues.length}
+        RETURNING *
+      `,
+      updateValues
+    )
+
+    const updatedUser = rows[0]
+
+    if (!updatedUser) {
       return NextResponse.json(
-        { success: false, message: 'Gagal update user: ' + error.message },
+        { success: false, message: 'Gagal update user' },
         { status: 500 }
       )
     }
 
-    console.log('User updated successfully:', data.id)
+    console.log('User updated successfully:', updatedUser.id)
     console.log('======================')
 
     return NextResponse.json({
       success: true,
       message: 'User berhasil diupdate',
-      data
+      data: updatedUser
     })
 
   } catch (error: any) {
@@ -119,19 +113,7 @@ export async function DELETE(
     console.log('=== DELETE USER API ===')
     console.log('User ID:', userId)
 
-    // Delete user
-    const { error } = await supabaseAdmin
-      .from('users')
-      .delete()
-      .eq('id', userId)
-
-    if (error) {
-      console.error('Supabase error:', error)
-      return NextResponse.json(
-        { success: false, message: 'Gagal hapus user: ' + error.message },
-        { status: 500 }
-      )
-    }
+    await query('DELETE FROM users WHERE id = $1', [userId])
 
     console.log('User deleted successfully')
     console.log('======================')

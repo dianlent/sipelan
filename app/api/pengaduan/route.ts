@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 import { sendEmail, generatePengaduanCreatedEmail } from '@/lib/email'
+import { query } from '@/lib/db'
+import { saveUploadedFile } from '@/lib/storage'
+
+export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,89 +48,96 @@ export async function POST(request: NextRequest) {
               { status: 400 }
             )
           }
-          console.log('✅ reCAPTCHA verified, score:', verifyData.score)
+          console.log('バ. reCAPTCHA verified, score:', verifyData.score)
         }
       } catch (recaptchaError) {
         console.error('reCAPTCHA verification error:', recaptchaError)
-        // Continue even if reCAPTCHA fails (optional: make it strict by returning error)
       }
     }
 
     // Handle file upload if present
     let file_bukti_path = null
     if (file_bukti && file_bukti.size > 0) {
-      const fileExt = file_bukti.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
-      const filePath = `bukti/${fileName}`
-
-      const { error: uploadError } = await supabaseAdmin
-        .storage
-        .from('pengaduan-files')
-        .upload(filePath, file_bukti, {
-          contentType: file_bukti.type,
-          upsert: false
-        })
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError)
-        return NextResponse.json(
-          { success: false, message: 'Gagal mengunggah file: ' + uploadError.message },
-          { status: 500 }
-        )
-      }
-
-      file_bukti_path = filePath
+      const uploaded = await saveUploadedFile(file_bukti, 'bukti', 'bukti')
+      file_bukti_path = uploaded.publicUrl
     }
 
-    // Prepare data for insertion
-    // IMPORTANT: Always save full data to database for admin purposes
-    // Masking will be done on display/frontend only
     const pengaduanData = {
-      kategori_id: parseInt(kategori_id),
+      kategori_id: parseInt(kategori_id, 10),
       judul_pengaduan,
       isi_pengaduan,
       lokasi_kejadian: lokasi_kejadian || null,
       tanggal_kejadian: tanggal_kejadian || null,
-      nama_pelapor: nama_pelapor, // Always save full name for admin
-      email_pelapor: email_pelapor, // Always save full email for admin
+      nama_pelapor: nama_pelapor,
+      email_pelapor: email_pelapor,
       no_telepon,
-      anonim, // Flag to indicate if should be masked in public view
+      anonim,
       file_bukti: file_bukti_path,
       status: 'masuk',
-      user_id: null // Anonymous submission
+      user_id: null
     }
 
-    // Insert pengaduan
-    const { data: pengaduan, error: insertError } = await supabaseAdmin
-      .from('pengaduan')
-      .insert([pengaduanData])
-      .select()
-      .single()
+    const { rows } = await query(
+      `
+        INSERT INTO pengaduan (
+          kategori_id,
+          judul_pengaduan,
+          isi_pengaduan,
+          lokasi_kejadian,
+          tanggal_kejadian,
+          nama_pelapor,
+          email_pelapor,
+          no_telepon,
+          anonim,
+          file_bukti,
+          status,
+          user_id
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING *
+      `,
+      [
+        pengaduanData.kategori_id,
+        pengaduanData.judul_pengaduan,
+        pengaduanData.isi_pengaduan,
+        pengaduanData.lokasi_kejadian,
+        pengaduanData.tanggal_kejadian,
+        pengaduanData.nama_pelapor,
+        pengaduanData.email_pelapor,
+        pengaduanData.no_telepon,
+        pengaduanData.anonim,
+        pengaduanData.file_bukti,
+        pengaduanData.status,
+        pengaduanData.user_id
+      ]
+    )
 
-    if (insertError) {
-      console.error('Insert error:', insertError)
+    const pengaduan = rows[0]
+
+    if (!pengaduan) {
       return NextResponse.json(
-        { success: false, message: 'Gagal menyimpan pengaduan: ' + insertError.message },
+        { success: false, message: 'Gagal menyimpan pengaduan' },
         { status: 500 }
       )
     }
 
-    // Insert initial status
-    const { error: statusError } = await supabaseAdmin
-      .from('pengaduan_status')
-      .insert([{
-        pengaduan_id: pengaduan.id,
-        status: 'masuk',
-        keterangan: 'Pengaduan telah diterima sistem dan menunggu verifikasi',
-        user_id: null
-      }])
-
-    if (statusError) {
+    try {
+      await query(
+        `
+          INSERT INTO pengaduan_status (pengaduan_id, status, keterangan, user_id)
+          VALUES ($1, $2, $3, $4)
+        `,
+        [
+          pengaduan.id,
+          'masuk',
+          'Pengaduan telah diterima sistem dan menunggu verifikasi',
+          null
+        ]
+      )
+    } catch (statusError) {
       console.error('Status insert error:', statusError)
-      // Don't fail the whole request if status insert fails
     }
 
-    // Send email notification to reporter (if not anonymous)
     if (!anonim && email_pelapor) {
       try {
         const emailHtml = generatePengaduanCreatedEmail(pengaduan, email_pelapor)
@@ -144,11 +154,9 @@ export async function POST(request: NextRequest) {
         }
       } catch (emailError) {
         console.error('Email sending error:', emailError)
-        // Don't fail the request if email fails
       }
     }
 
-    // Return success response with kode_pengaduan
     return NextResponse.json({
       success: true,
       message: 'Pengaduan berhasil disimpan',
@@ -173,80 +181,64 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const page = parseInt(searchParams.get('page') || '1', 10)
+    const limit = parseInt(searchParams.get('limit') || '10', 10)
     const status = searchParams.get('status')
     const bidang_id = searchParams.get('bidang_id')
     
     console.log('=== GET PENGADUAN API ===')
     console.log('Params:', { page, limit, status, bidang_id })
 
-    let query = supabaseAdmin
-      .from('pengaduan')
-      .select(`
-        *,
-        kategori_pengaduan (
-          id,
-          nama_kategori,
-          deskripsi
-        ),
-        bidang (
-          bidang_id,
-          nama_bidang,
-          kode_bidang
-        ),
-        users (
-          nama_lengkap,
-          email
-        )
-      `, { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range((page - 1) * limit, page * limit - 1)
+    const filters: string[] = []
+    const params: Array<string | number | string[]> = []
 
     if (status) {
-      console.log('Filtering by status:', status)
-      query = query.eq('status', status)
+      params.push(status)
+      filters.push(`p.status = $${params.length}`)
     }
 
     if (bidang_id) {
-      console.log('Filtering by bidang_id:', bidang_id)
-      const bidangIdInt = parseInt(bidang_id)
-      console.log('Parsed bidang_id:', bidangIdInt)
-      
-      // Filter by bidang_id and only show disposed pengaduan
-      query = query
-        .eq('bidang_id', bidangIdInt)
-        .in('status', ['terdisposisi', 'tindak_lanjut', 'selesai'])
+      params.push(parseInt(bidang_id, 10))
+      filters.push(`p.bidang_id = $${params.length}`)
+      params.push(['terdisposisi', 'tindak_lanjut', 'selesai'])
+      filters.push(`p.status = ANY($${params.length}::text[])`)
     }
 
-    const { data, error, count } = await query
+    const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : ''
 
-    if (error) {
-      console.error('Query error:', error)
-      return NextResponse.json(
-        { success: false, message: error.message },
-        { status: 500 }
-      )
-    }
+    const countResult = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM pengaduan p ${whereClause}`,
+      params
+    )
+    const total = parseInt(countResult.rows[0]?.count || '0', 10)
 
-    console.log('Query result:', {
-      total: count,
-      returned: data?.length || 0,
-      sample: data?.[0] ? {
-        kode: data[0].kode_pengaduan,
-        status: data[0].status,
-        bidang_id: data[0].bidang_id
-      } : null
-    })
+    const listParams = [...params, limit, (page - 1) * limit]
+    const { rows } = await query(
+      `
+        SELECT
+          p.*,
+          json_build_object('id', k.id, 'nama_kategori', k.nama_kategori, 'deskripsi', k.deskripsi) AS kategori_pengaduan,
+          json_build_object('bidang_id', b.id, 'nama_bidang', b.nama_bidang, 'kode_bidang', b.kode_bidang) AS bidang,
+          json_build_object('nama_lengkap', u.nama_lengkap, 'email', u.email) AS users
+        FROM pengaduan p
+        LEFT JOIN kategori_pengaduan k ON k.id = p.kategori_id
+        LEFT JOIN bidang b ON b.id = p.bidang_id
+        LEFT JOIN users u ON u.id = p.user_id
+        ${whereClause}
+        ORDER BY p.created_at DESC
+        LIMIT $${listParams.length - 1} OFFSET $${listParams.length}
+      `,
+      listParams
+    )
 
     return NextResponse.json({
       success: true,
-      data,
+      data: rows,
       pagination: {
         page,
         limit,
-        total: count,
-        totalPages: Math.ceil((count || 0) / limit)
+        total,
+        totalPages: Math.ceil(total / limit)
       }
     })
 

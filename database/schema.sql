@@ -6,7 +6,7 @@
 -- 
 -- Instruksi:
 -- 1. Copy seluruh file ini
--- 2. Paste ke Supabase SQL Editor
+-- 2. Jalankan di PostgreSQL (psql atau DB client)
 -- 3. Run sekali saja
 -- 4. Database siap digunakan
 --
@@ -45,6 +45,7 @@ CREATE TABLE bidang (
     nama_bidang VARCHAR(100) NOT NULL UNIQUE,
     kode_bidang VARCHAR(20) NOT NULL UNIQUE,
     email_bidang VARCHAR(255),
+    deskripsi TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -185,7 +186,7 @@ ON CONFLICT (setting_key) DO NOTHING;
 -- Default App Settings (Branding)
 INSERT INTO app_settings (setting_key, setting_value, setting_type, description, is_public) VALUES
 ('app_name', 'SIPelan', 'string', 'Nama aplikasi yang ditampilkan di homepage', true),
-('app_logo_url', '', 'string', 'URL logo aplikasi dari Supabase Storage', true)
+('app_logo_url', '', 'string', 'URL logo aplikasi', true)
 ON CONFLICT (setting_key) DO NOTHING;
 
 -- Default App Settings (Social Media)
@@ -279,69 +280,13 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ============================================
--- PART 8: ROW LEVEL SECURITY (RLS)
+-- PART 8: SECURITY NOTES
 -- ============================================
-
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pengaduan ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pengaduan_status ENABLE ROW LEVEL SECURITY;
-ALTER TABLE disposisi ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tanggapan ENABLE ROW LEVEL SECURITY;
-
--- Drop existing policies
-DROP POLICY IF EXISTS "Users can view own data" ON users;
-DROP POLICY IF EXISTS "Users can insert own data" ON users;
-DROP POLICY IF EXISTS "Users can update own data" ON users;
-DROP POLICY IF EXISTS "Users can view own pengaduan" ON pengaduan;
-DROP POLICY IF EXISTS "Users can insert own pengaduan" ON pengaduan;
-DROP POLICY IF EXISTS "Users can update own pengaduan" ON pengaduan;
-DROP POLICY IF EXISTS "Anyone can insert pengaduan" ON pengaduan;
-DROP POLICY IF EXISTS "Anyone can view pengaduan by kode" ON pengaduan;
-DROP POLICY IF EXISTS "Bidang users can view assigned pengaduan" ON pengaduan;
-
--- Policies for users
-CREATE POLICY "Users can view own data" ON users
-    FOR SELECT USING (auth.uid() = id);
-
-CREATE POLICY "Users can insert own data" ON users
-    FOR INSERT WITH CHECK (auth.uid() = id);
-
-CREATE POLICY "Users can update own data" ON users
-    FOR UPDATE USING (auth.uid() = id);
-
--- Policies for pengaduan (allow anonymous submissions)
-CREATE POLICY "Anyone can insert pengaduan" ON pengaduan
-    FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Anyone can view pengaduan by kode" ON pengaduan
-    FOR SELECT USING (true);
+-- RLS and storage bucket policies are Supabase-specific.
+-- For self-hosted PostgreSQL, enforce access control at the app layer.
 
 -- ============================================
--- PART 9: STORAGE BUCKET SETUP
--- ============================================
-
--- Create storage bucket for pengaduan files
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('pengaduan-files', 'pengaduan-files', true)
-ON CONFLICT (id) DO NOTHING;
-
--- Drop existing storage policies
-DROP POLICY IF EXISTS "Public Access" ON storage.objects;
-DROP POLICY IF EXISTS "Authenticated users can upload" ON storage.objects;
-DROP POLICY IF EXISTS "Anyone can upload" ON storage.objects;
-
--- Set policy for public read access
-CREATE POLICY "Public Access"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'pengaduan-files');
-
--- Set policy for anyone can upload (for anonymous submissions)
-CREATE POLICY "Anyone can upload"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'pengaduan-files');
-
--- ============================================
--- PART 10: DEFAULT USERS
+-- PART 9: DEFAULT USERS
 -- ============================================
 
 -- Admin User (Password: admin123)
@@ -368,7 +313,7 @@ INSERT INTO users (username, email, password_hash, nama_lengkap, role, kode_bida
 ON CONFLICT (username) DO NOTHING;
 
 -- ============================================
--- PART 11: COMMENTS
+-- PART 10: COMMENTS
 -- ============================================
 
 COMMENT ON TABLE pengaduan IS 'Tabel utama untuk menyimpan data pengaduan';
@@ -385,7 +330,7 @@ COMMENT ON COLUMN pengaduan_status.tanggapan IS 'Isi tanggapan dari petugas';
 COMMENT ON COLUMN pengaduan_status.petugas IS 'Nama petugas yang memberikan tanggapan';
 
 -- ============================================
--- PART 12: VERIFICATION QUERIES
+-- PART 11: VERIFICATION QUERIES
 -- ============================================
 
 -- Check tables created
@@ -427,7 +372,7 @@ SELECT 'App Settings', COUNT(*) FROM app_settings;
 --   bidang_sekretariat / bidang123
 --
 -- Next Steps:
--- 1. Update .env.local dengan Supabase credentials
+-- 1. Update .env.local dengan DATABASE_URL
 -- 2. Login dengan admin/admin123
 -- 3. Ganti password di Settings
 -- 4. Konfigurasi app settings (logo, nama, social media)

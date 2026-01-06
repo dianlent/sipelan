@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { query } from '@/lib/db'
 
 // GET single pengaduan by ID
 export async function GET(
@@ -9,29 +9,26 @@ export async function GET(
   try {
     const id = params.id
 
-    const { data, error } = await supabaseAdmin
-      .from('pengaduan')
-      .select(`
-        *,
-        kategori_pengaduan (
-          id,
-          nama_kategori,
-          deskripsi
-        ),
-        bidang (
-          bidang_id,
-          nama_bidang,
-          kode_bidang
-        ),
-        users (
-          nama_lengkap,
-          email
-        )
-      `)
-      .eq('id', id)
-      .single()
+    const { rows } = await query(
+      `
+        SELECT
+          p.*,
+          json_build_object('id', k.id, 'nama_kategori', k.nama_kategori, 'deskripsi', k.deskripsi) AS kategori_pengaduan,
+          json_build_object('bidang_id', b.id, 'nama_bidang', b.nama_bidang, 'kode_bidang', b.kode_bidang) AS bidang,
+          json_build_object('nama_lengkap', u.nama_lengkap, 'email', u.email) AS users
+        FROM pengaduan p
+        LEFT JOIN kategori_pengaduan k ON k.id = p.kategori_id
+        LEFT JOIN bidang b ON b.id = p.bidang_id
+        LEFT JOIN users u ON u.id = p.user_id
+        WHERE p.id = $1
+        LIMIT 1
+      `,
+      [id]
+    )
 
-    if (error || !data) {
+    const data = rows[0]
+
+    if (!data) {
       return NextResponse.json(
         { success: false, message: 'Pengaduan tidak ditemukan' },
         { status: 404 }
@@ -61,20 +58,34 @@ export async function PATCH(
     const id = params.id
     const body = await request.json()
 
-    const { data, error } = await supabaseAdmin
-      .from('pengaduan')
-      .update({
-        ...body,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) {
+    const entries = Object.entries(body || {})
+    if (entries.length === 0) {
       return NextResponse.json(
-        { success: false, message: error.message },
-        { status: 500 }
+        { success: false, message: 'Tidak ada data untuk diupdate' },
+        { status: 400 }
+      )
+    }
+
+    const setClauses = entries.map(([key], index) => `${key} = $${index + 1}`)
+    const values = entries.map(([, value]) => value)
+    values.push(id)
+
+    const { rows } = await query(
+      `
+        UPDATE pengaduan
+        SET ${setClauses.join(', ')}, updated_at = NOW()
+        WHERE id = $${values.length}
+        RETURNING *
+      `,
+      values
+    )
+
+    const data = rows[0]
+
+    if (!data) {
+      return NextResponse.json(
+        { success: false, message: 'Pengaduan tidak ditemukan' },
+        { status: 404 }
       )
     }
 
@@ -101,17 +112,7 @@ export async function DELETE(
   try {
     const id = params.id
 
-    const { error } = await supabaseAdmin
-      .from('pengaduan')
-      .delete()
-      .eq('id', id)
-
-    if (error) {
-      return NextResponse.json(
-        { success: false, message: error.message },
-        { status: 500 }
-      )
-    }
+    await query('DELETE FROM pengaduan WHERE id = $1', [id])
 
     return NextResponse.json({
       success: true,

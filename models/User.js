@@ -1,24 +1,32 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const supabase = require('../config/database');
+const db = require('../config/database');
 
 class User {
     static async create(userData) {
         try {
             const saltRounds = 10;
             const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
-            
-            const { data, error } = await supabase
-                .from('users')
-                .insert([{
-                    ...userData,
-                    password_hash: hashedPassword
-                }])
-                .select()
-                .single();
 
-            if (error) throw error;
-            
+            const { rows } = await db.query(
+                `
+                    INSERT INTO users (username, email, password_hash, nama_lengkap, role, bidang_id, kode_bidang, is_active)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, COALESCE($8, true))
+                    RETURNING *
+                `,
+                [
+                    userData.username,
+                    userData.email,
+                    hashedPassword,
+                    userData.nama_lengkap,
+                    userData.role,
+                    userData.bidang_id || null,
+                    userData.kode_bidang || null,
+                    userData.is_active
+                ]
+            );
+
+            const data = rows[0];
             const { password_hash, ...userWithoutPassword } = data;
             return userWithoutPassword;
         } catch (error) {
@@ -28,14 +36,11 @@ class User {
 
     static async findByEmail(email) {
         try {
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('email', email)
-                .single();
-
-            if (error && error.code !== 'PGRST116') throw error;
-            return data;
+            const { rows } = await db.query(
+                'SELECT * FROM users WHERE email = $1 LIMIT 1',
+                [email]
+            );
+            return rows[0];
         } catch (error) {
             throw new Error('Error finding user by email: ' + error.message);
         }
@@ -43,14 +48,11 @@ class User {
 
     static async findByUsername(username) {
         try {
-            const { data, error } = await supabase
-                .from('users')
-                .select('*')
-                .eq('username', username)
-                .single();
-
-            if (error && error.code !== 'PGRST116') throw error;
-            return data;
+            const { rows } = await db.query(
+                'SELECT * FROM users WHERE username = $1 LIMIT 1',
+                [username]
+            );
+            return rows[0];
         } catch (error) {
             throw new Error('Error finding user by username: ' + error.message);
         }
@@ -58,17 +60,18 @@ class User {
 
     static async findById(id) {
         try {
-            const { data, error } = await supabase
-                .from('users')
-                .select(`
-                    *,
-                    bidang (nama_bidang, kode_bidang, email_bidang)
-                `)
-                .eq('id', id)
-                .single();
+            const { rows } = await db.query(
+                `
+                    SELECT u.*, b.nama_bidang, b.kode_bidang, b.email_bidang
+                    FROM users u
+                    LEFT JOIN bidang b ON b.id = u.bidang_id
+                    WHERE u.id = $1
+                    LIMIT 1
+                `,
+                [id]
+            );
 
-            if (error) throw error;
-            
+            const data = rows[0];
             if (data) {
                 const { password_hash, ...userWithoutPassword } = data;
                 return userWithoutPassword;
@@ -82,39 +85,53 @@ class User {
     static async findAll(page = 1, limit = 10, filters = {}) {
         try {
             const offset = (page - 1) * limit;
-            let query = supabase
-                .from('users')
-                .select(`
-                    *,
-                    bidang (nama_bidang, kode_bidang)
-                `, { count: 'exact' })
-                .order('created_at', { ascending: false })
-                .range(offset, offset + limit - 1);
+            const conditions = [];
+            const params = [];
 
             if (filters.role) {
-                query = query.eq('role', filters.role);
+                params.push(filters.role);
+                conditions.push(`u.role = $${params.length}`);
             }
             if (filters.bidang_id) {
-                query = query.eq('bidang_id', filters.bidang_id);
+                params.push(filters.bidang_id);
+                conditions.push(`u.bidang_id = $${params.length}`);
             }
             if (filters.is_active !== undefined) {
-                query = query.eq('is_active', filters.is_active);
+                params.push(filters.is_active);
+                conditions.push(`u.is_active = $${params.length}`);
             }
 
-            const { data, error, count } = await query;
+            const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-            if (error) throw error;
-            
-            const usersWithoutPasswords = data.map(user => {
+            const countResult = await db.query(
+                `SELECT COUNT(*)::text AS count FROM users u ${whereClause}`,
+                params
+            );
+            const total = parseInt(countResult.rows[0]?.count || '0', 10);
+
+            const listParams = [...params, limit, offset];
+            const { rows } = await db.query(
+                `
+                    SELECT u.*, b.nama_bidang, b.kode_bidang
+                    FROM users u
+                    LEFT JOIN bidang b ON b.id = u.bidang_id
+                    ${whereClause}
+                    ORDER BY u.created_at DESC
+                    LIMIT $${listParams.length - 1} OFFSET $${listParams.length}
+                `,
+                listParams
+            );
+
+            const usersWithoutPasswords = rows.map(user => {
                 const { password_hash, ...userWithoutPassword } = user;
                 return userWithoutPassword;
             });
-            
+
             return {
                 data: usersWithoutPasswords,
-                total: count,
+                total,
                 page,
-                totalPages: Math.ceil(count / limit)
+                totalPages: Math.ceil(total / limit)
             };
         } catch (error) {
             throw new Error('Error finding all users: ' + error.message);
@@ -123,23 +140,37 @@ class User {
 
     static async update(id, userData) {
         try {
-            let updateData = { ...userData, updated_at: new Date() };
-            
-            if (userData.password) {
-                const saltRounds = 10;
-                updateData.password_hash = await bcrypt.hash(userData.password, saltRounds);
-                delete updateData.password;
+            const updates = [];
+            const params = [];
+
+            for (const [key, value] of Object.entries(userData)) {
+                if (key === 'password') {
+                    continue;
+                }
+                params.push(value);
+                updates.push(`${key} = $${params.length}`);
             }
 
-            const { data, error } = await supabase
-                .from('users')
-                .update(updateData)
-                .eq('id', id)
-                .select()
-                .single();
+            if (userData.password) {
+                const saltRounds = 10;
+                const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+                params.push(hashedPassword);
+                updates.push(`password_hash = $${params.length}`);
+            }
 
-            if (error) throw error;
-            
+            params.push(id);
+
+            const { rows } = await db.query(
+                `
+                    UPDATE users
+                    SET ${updates.join(', ')}, updated_at = NOW()
+                    WHERE id = $${params.length}
+                    RETURNING *
+                `,
+                params
+            );
+
+            const data = rows[0];
             const { password_hash, ...userWithoutPassword } = data;
             return userWithoutPassword;
         } catch (error) {
@@ -149,12 +180,7 @@ class User {
 
     static async delete(id) {
         try {
-            const { error } = await supabase
-                .from('users')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
+            await db.query('DELETE FROM users WHERE id = $1', [id]);
             return true;
         } catch (error) {
             throw new Error('Error deleting user: ' + error.message);
@@ -196,14 +222,16 @@ class User {
 
     static async findByBidang(bidangId) {
         try {
-            const { data, error } = await supabase
-                .from('users')
-                .select('id, username, email, nama_lengkap, role')
-                .eq('bidang_id', bidangId)
-                .eq('is_active', true);
-
-            if (error) throw error;
-            return data;
+            const { rows } = await db.query(
+                `
+                    SELECT id, username, email, nama_lengkap, role
+                    FROM users
+                    WHERE bidang_id = $1
+                      AND is_active = true
+                `,
+                [bidangId]
+            );
+            return rows;
         } catch (error) {
             throw new Error('Error finding users by bidang: ' + error.message);
         }

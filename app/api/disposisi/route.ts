@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { query } from '@/lib/db'
 
 // POST - Create new disposisi
 export async function POST(request: NextRequest) {
@@ -7,7 +7,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { pengaduan_id, dari_bidang_id, ke_bidang_id, keterangan, user_id } = body
 
-    // Validate required fields
     if (!pengaduan_id || !ke_bidang_id || !keterangan) {
       return NextResponse.json(
         { success: false, message: 'Data tidak lengkap' },
@@ -20,80 +19,87 @@ export async function POST(request: NextRequest) {
     console.log('Ke Bidang ID:', ke_bidang_id)
     console.log('Keterangan:', keterangan)
 
-    // Insert disposisi record
-    const { data: disposisi, error: disposisiError } = await supabaseAdmin
-      .from('disposisi')
-      .insert([{
+    const disposisiResult = await query(
+      `
+        INSERT INTO disposisi (
+          pengaduan_id,
+          dari_bidang_id,
+          ke_bidang_id,
+          keterangan,
+          user_id,
+          created_at
+        )
+        VALUES ($1, $2, $3, $4, $5, NOW())
+        RETURNING *
+      `,
+      [
         pengaduan_id,
-        dari_bidang_id: dari_bidang_id || null,
+        dari_bidang_id || null,
         ke_bidang_id,
         keterangan,
-        user_id: user_id || null,
-        created_at: new Date().toISOString()
-      }])
-      .select()
-      .single()
+        user_id || null
+      ]
+    )
 
-    if (disposisiError) {
-      console.error('Disposisi error:', disposisiError)
+    const disposisi = disposisiResult.rows[0]
+
+    if (!disposisi) {
       return NextResponse.json(
-        { success: false, message: 'Gagal menyimpan disposisi: ' + disposisiError.message },
+        { success: false, message: 'Gagal menyimpan disposisi' },
         { status: 500 }
       )
     }
 
-    console.log('✅ Disposisi created:', disposisi)
+    await query(
+      `
+        UPDATE pengaduan
+        SET bidang_id = $1,
+            status = 'terdisposisi',
+            updated_at = NOW()
+        WHERE id = $2
+      `,
+      [ke_bidang_id, pengaduan_id]
+    )
 
-    console.log('=== UPDATING PENGADUAN ===')
-    console.log('Setting bidang_id to:', ke_bidang_id)
-    console.log('Setting status to: terdisposisi')
+    const pengaduanResult = await query(
+      `
+        SELECT
+          p.*,
+          json_build_object('nama_kategori', k.nama_kategori) AS kategori_pengaduan,
+          json_build_object('bidang_id', b.id, 'nama_bidang', b.nama_bidang, 'kode_bidang', b.kode_bidang) AS bidang
+        FROM pengaduan p
+        LEFT JOIN kategori_pengaduan k ON k.id = p.kategori_id
+        LEFT JOIN bidang b ON b.id = p.bidang_id
+        WHERE p.id = $1
+        LIMIT 1
+      `,
+      [pengaduan_id]
+    )
 
-    // Update pengaduan with bidang_id and status
-    const { data: pengaduan, error: updateError } = await supabaseAdmin
-      .from('pengaduan')
-      .update({
-        bidang_id: ke_bidang_id,
-        status: 'terdisposisi',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', pengaduan_id)
-      .select(`
-        *,
-        kategori_pengaduan (nama_kategori),
-        bidang (bidang_id, nama_bidang, kode_bidang)
-      `)
-      .single()
+    const pengaduan = pengaduanResult.rows[0]
 
-    if (updateError) {
-      console.error('Update error:', updateError)
+    if (!pengaduan) {
       return NextResponse.json(
-        { success: false, message: 'Gagal update pengaduan: ' + updateError.message },
+        { success: false, message: 'Gagal update pengaduan' },
         { status: 500 }
       )
     }
 
-    console.log('✅ Pengaduan updated:', {
-      id: pengaduan.id,
-      kode: pengaduan.kode_pengaduan,
-      bidang_id: pengaduan.bidang_id,
-      status: pengaduan.status,
-      bidang: pengaduan.bidang?.nama_bidang
-    })
-
-    // Insert status history
-    const { error: statusError } = await supabaseAdmin
-      .from('pengaduan_status')
-      .insert([{
-        pengaduan_id,
-        status: 'terdisposisi',
-        keterangan: `Pengaduan didisposisikan ke ${pengaduan.bidang?.nama_bidang}. ${keterangan}`,
-        user_id: user_id || null,
-        created_at: new Date().toISOString()
-      }])
-
-    if (statusError) {
+    try {
+      await query(
+        `
+          INSERT INTO pengaduan_status (pengaduan_id, status, keterangan, user_id, created_at)
+          VALUES ($1, $2, $3, $4, NOW())
+        `,
+        [
+          pengaduan_id,
+          'terdisposisi',
+          `Pengaduan didisposisikan ke ${pengaduan.bidang?.nama_bidang}. ${keterangan}`,
+          user_id || null
+        ]
+      )
+    } catch (statusError) {
       console.error('Status error:', statusError)
-      // Don't fail the request if status insert fails
     }
 
     return NextResponse.json({
@@ -127,38 +133,26 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { data, error } = await supabaseAdmin
-      .from('disposisi')
-      .select(`
-        *,
-        dari_bidang:dari_bidang_id (
-          bidang_id,
-          nama_bidang,
-          kode_bidang
-        ),
-        ke_bidang:ke_bidang_id (
-          bidang_id,
-          nama_bidang,
-          kode_bidang
-        ),
-        users (
-          nama_lengkap,
-          email
-        )
-      `)
-      .eq('pengaduan_id', pengaduan_id)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      return NextResponse.json(
-        { success: false, message: error.message },
-        { status: 500 }
-      )
-    }
+    const { rows } = await query(
+      `
+        SELECT
+          d.*,
+          json_build_object('bidang_id', db.id, 'nama_bidang', db.nama_bidang, 'kode_bidang', db.kode_bidang) AS dari_bidang,
+          json_build_object('bidang_id', kb.id, 'nama_bidang', kb.nama_bidang, 'kode_bidang', kb.kode_bidang) AS ke_bidang,
+          json_build_object('nama_lengkap', u.nama_lengkap, 'email', u.email) AS users
+        FROM disposisi d
+        LEFT JOIN bidang db ON db.id = d.dari_bidang_id
+        LEFT JOIN bidang kb ON kb.id = d.ke_bidang_id
+        LEFT JOIN users u ON u.id = d.user_id
+        WHERE d.pengaduan_id = $1
+        ORDER BY d.created_at DESC
+      `,
+      [pengaduan_id]
+    )
 
     return NextResponse.json({
       success: true,
-      data
+      data: rows
     })
 
   } catch (error: any) {

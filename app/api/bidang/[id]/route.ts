@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+import { query } from '@/lib/db'
 
 export async function PUT(
   request: NextRequest,
@@ -21,38 +17,35 @@ export async function PUT(
       }, { status: 400 })
     }
 
-    // Check if kode already exists for other bidang
-    const { data: existing } = await supabase
-      .from('bidang')
-      .select('id')
-      .eq('kode_bidang', kode_bidang)
-      .neq('id', id)
-      .single()
+    const existing = await query(
+      'SELECT id FROM bidang WHERE kode_bidang = $1 AND id <> $2 LIMIT 1',
+      [kode_bidang, id]
+    )
 
-    if (existing) {
+    if (existing.rows.length > 0) {
       return NextResponse.json({
         success: false,
         message: 'Kode bidang sudah digunakan'
       }, { status: 400 })
     }
 
-    const { data: updatedBidang, error } = await supabase
-      .from('bidang')
-      .update({
-        nama_bidang,
-        kode_bidang,
-        deskripsi
-      })
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) throw error
+    const { rows } = await query(
+      `
+        UPDATE bidang
+        SET nama_bidang = $1,
+            kode_bidang = $2,
+            deskripsi = $3,
+            updated_at = NOW()
+        WHERE id = $4
+        RETURNING *
+      `,
+      [nama_bidang, kode_bidang, deskripsi || null, id]
+    )
 
     return NextResponse.json({
       success: true,
       message: 'Bidang berhasil diupdate',
-      data: updatedBidang
+      data: rows[0]
     })
   } catch (error: any) {
     console.error('Update bidang error:', error)
@@ -70,40 +63,23 @@ export async function DELETE(
   try {
     const id = params.id
 
-    // Check if bidang has users
-    const { data: users } = await supabase
-      .from('users')
-      .select('id')
-      .eq('bidang_id', id)
-      .limit(1)
-
-    if (users && users.length > 0) {
+    const users = await query('SELECT id FROM users WHERE bidang_id = $1 LIMIT 1', [id])
+    if (users.rows.length > 0) {
       return NextResponse.json({
         success: false,
         message: 'Tidak dapat menghapus bidang yang masih memiliki user'
       }, { status: 400 })
     }
 
-    // Check if bidang has pengaduan
-    const { data: pengaduan } = await supabase
-      .from('pengaduan')
-      .select('id')
-      .eq('bidang_id', id)
-      .limit(1)
-
-    if (pengaduan && pengaduan.length > 0) {
+    const pengaduan = await query('SELECT id FROM pengaduan WHERE bidang_id = $1 LIMIT 1', [id])
+    if (pengaduan.rows.length > 0) {
       return NextResponse.json({
         success: false,
         message: 'Tidak dapat menghapus bidang yang masih memiliki pengaduan'
       }, { status: 400 })
     }
 
-    const { error } = await supabase
-      .from('bidang')
-      .delete()
-      .eq('id', id)
-
-    if (error) throw error
+    await query('DELETE FROM bidang WHERE id = $1', [id])
 
     return NextResponse.json({
       success: true,

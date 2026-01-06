@@ -1,46 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+import { query } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get all bidang
-    const { data: bidangList, error } = await supabase
-      .from('bidang')
-      .select('*')
-      .order('id', { ascending: true })
-
-    if (error) throw error
-
-    // Get counts for each bidang
-    const bidangWithCounts = await Promise.all(
-      (bidangList || []).map(async (bidang) => {
-        // Count users in this bidang
-        const { count: userCount } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .eq('bidang_id', bidang.id)
-
-        // Count pengaduan in this bidang
-        const { count: pengaduanCount } = await supabase
-          .from('pengaduan')
-          .select('*', { count: 'exact', head: true })
-          .eq('bidang_id', bidang.id)
-
-        return {
-          ...bidang,
-          user_count: userCount || 0,
-          pengaduan_count: pengaduanCount || 0
-        }
-      })
+    const { rows } = await query(
+      `
+        SELECT
+          b.*,
+          COALESCE(u.user_count, 0) AS user_count,
+          COALESCE(p.pengaduan_count, 0) AS pengaduan_count
+        FROM bidang b
+        LEFT JOIN (
+          SELECT bidang_id, COUNT(*)::int AS user_count
+          FROM users
+          GROUP BY bidang_id
+        ) u ON u.bidang_id = b.id
+        LEFT JOIN (
+          SELECT bidang_id, COUNT(*)::int AS pengaduan_count
+          FROM pengaduan
+          GROUP BY bidang_id
+        ) p ON p.bidang_id = b.id
+        ORDER BY b.id ASC
+      `
     )
 
     return NextResponse.json({
       success: true,
-      data: bidangWithCounts
+      data: rows
     })
   } catch (error: any) {
     console.error('Get bidang error:', error)
@@ -63,36 +49,27 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Check if kode already exists
-    const { data: existing } = await supabase
-      .from('bidang')
-      .select('id')
-      .eq('kode_bidang', kode_bidang)
-      .single()
-
-    if (existing) {
+    const existing = await query('SELECT id FROM bidang WHERE kode_bidang = $1 LIMIT 1', [kode_bidang])
+    if (existing.rows.length > 0) {
       return NextResponse.json({
         success: false,
         message: 'Kode bidang sudah digunakan'
       }, { status: 400 })
     }
 
-    const { data: newBidang, error } = await supabase
-      .from('bidang')
-      .insert([{
-        nama_bidang,
-        kode_bidang,
-        deskripsi
-      }])
-      .select()
-      .single()
-
-    if (error) throw error
+    const { rows } = await query(
+      `
+        INSERT INTO bidang (nama_bidang, kode_bidang, deskripsi)
+        VALUES ($1, $2, $3)
+        RETURNING *
+      `,
+      [nama_bidang, kode_bidang, deskripsi || null]
+    )
 
     return NextResponse.json({
       success: true,
       message: 'Bidang berhasil ditambahkan',
-      data: newBidang
+      data: rows[0]
     }, { status: 201 })
   } catch (error: any) {
     console.error('Create bidang error:', error)

@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers'
-import { supabaseAdmin } from '@/lib/supabase'
 import crypto from 'crypto'
+import { query } from '@/lib/db'
 
 const SESSION_COOKIE_NAME = 'session_token'
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
@@ -29,20 +29,13 @@ export async function createSession(userId: string, userAgent?: string, ipAddres
   const sessionToken = generateSessionToken()
   const expiresAt = new Date(Date.now() + SESSION_DURATION)
 
-  const { error } = await supabaseAdmin
-    .from('sessions')
-    .insert({
-      user_id: userId,
-      session_token: sessionToken,
-      expires_at: expiresAt.toISOString(),
-      user_agent: userAgent,
-      ip_address: ipAddress
-    })
-
-  if (error) {
-    console.error('Error creating session:', error)
-    throw new Error('Failed to create session')
-  }
+  await query(
+    `
+      INSERT INTO sessions (user_id, session_token, expires_at, user_agent, ip_address)
+      VALUES ($1, $2, $3, $4, $5)
+    `,
+    [userId, sessionToken, expiresAt.toISOString(), userAgent || null, ipAddress || null]
+  )
 
   return sessionToken
 }
@@ -83,25 +76,28 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     }
 
     // Get session with user data
-    const { data: session, error: sessionError } = await supabaseAdmin
-      .from('sessions')
-      .select(`
-        user_id,
-        expires_at,
-        users (
-          id,
-          username,
-          email,
-          nama_lengkap,
-          role,
-          kode_bidang,
-          bidang_id
-        )
-      `)
-      .eq('session_token', sessionToken)
-      .single()
+    const { rows } = await query(
+      `
+        SELECT
+          s.expires_at,
+          u.id,
+          u.username,
+          u.email,
+          u.nama_lengkap,
+          u.role,
+          u.kode_bidang,
+          u.bidang_id
+        FROM sessions s
+        JOIN users u ON u.id = s.user_id
+        WHERE s.session_token = $1
+        LIMIT 1
+      `,
+      [sessionToken]
+    )
 
-    if (sessionError || !session) {
+    const session = rows[0]
+
+    if (!session) {
       return null
     }
 
@@ -111,16 +107,14 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
       return null
     }
 
-    const user = session.users as any
-
     return {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      nama_lengkap: user.nama_lengkap,
-      role: user.role,
-      kode_bidang: user.kode_bidang,
-      bidang_id: user.bidang_id
+      id: session.id,
+      username: session.username,
+      email: session.email,
+      nama_lengkap: session.nama_lengkap,
+      role: session.role,
+      kode_bidang: session.kode_bidang,
+      bidang_id: session.bidang_id
     }
   } catch (error) {
     console.error('Error getting current user:', error)
@@ -132,20 +126,14 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
  * Delete session from database
  */
 export async function deleteSession(sessionToken: string) {
-  await supabaseAdmin
-    .from('sessions')
-    .delete()
-    .eq('session_token', sessionToken)
+  await query('DELETE FROM sessions WHERE session_token = $1', [sessionToken])
 }
 
 /**
  * Delete all sessions for a user
  */
 export async function deleteUserSessions(userId: string) {
-  await supabaseAdmin
-    .from('sessions')
-    .delete()
-    .eq('user_id', userId)
+  await query('DELETE FROM sessions WHERE user_id = $1', [userId])
 }
 
 /**
@@ -173,8 +161,5 @@ export async function logout() {
  * Cleanup expired sessions (can be called periodically)
  */
 export async function cleanupExpiredSessions() {
-  await supabaseAdmin
-    .from('sessions')
-    .delete()
-    .lt('expires_at', new Date().toISOString())
+  await query('DELETE FROM sessions WHERE expires_at < NOW()')
 }

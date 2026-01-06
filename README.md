@@ -83,10 +83,10 @@
 
 ### Backend
 
-- **Database**: [Supabase](https://supabase.com/) - PostgreSQL database
+- **Database**: PostgreSQL (self-hosted)
 - **API**: Next.js API Routes
 - **Authentication**: JWT + bcrypt
-- **File Storage**: Supabase Storage
+- **File Storage**: Local filesystem (uploads)
 - **Email**: [Nodemailer](https://nodemailer.com/) - SMTP email service
 - **Charts**: [Chart.js](https://www.chartjs.org/) + react-chartjs-2
 
@@ -129,21 +129,20 @@ Buka [http://localhost:5000](http://localhost:5000)
 
 **Semua setup database sudah disatukan dalam 1 file SQL!**
 
-1. **Buat Project di Supabase**
-   - Buka [Supabase](https://supabase.com)
-   - Create New Project
-   - Copy URL dan Keys
+1. **Siapkan Database PostgreSQL**
+   - Buat database baru (mis. `sipelan`)
+   - Pastikan user DB punya akses CREATE/INSERT
 
 2. **Jalankan Schema SQL**
    - Buka file `database/schema.sql`
    - Copy seluruh isi file
-   - Paste ke Supabase SQL Editor
+   - Jalankan dengan `psql` atau DB client pilihan Anda
    - Klik **Run**
 
 3. **Selesai!** ✅
    - Semua tables ter-create
    - Data awal ter-insert (kategori, bidang)
-   - Storage bucket ter-setup
+   - File upload tersimpan di folder `uploads/`
    - Admin user ter-create (username: `admin`, password: `admin123`)
    - Trigger auto-generate kode ter-install
 
@@ -152,9 +151,9 @@ Buka [http://localhost:5000](http://localhost:5000)
 ✅ **Tables**: users, pengaduan, pengaduan_status, kategori_pengaduan, bidang, disposisi, tanggapan  
 ✅ **Indexes**: Optimasi query performance  
 ✅ **Trigger**: Auto-generate kode pengaduan (ADU-YYYY-XXXX)  
-✅ **Storage Bucket**: pengaduan-files dengan policies  
+✅ **File Upload**: tersimpan di folder `uploads/`  
 ✅ **Default Data**: 5 kategori, 5 bidang, 1 admin user  
-✅ **RLS Policies**: Row Level Security  
+✅ **Security**: akses dibatasi oleh aplikasi  
 ✅ **Verification Queries**: Check setup berhasil
 
 ---
@@ -226,11 +225,7 @@ yarn install
 Buat file `.env.local` di root directory:
 
 ```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_KEY=your_service_key
-
+# PostgreSQL\nDATABASE_URL=postgresql://user:password@localhost:5432/sipelan\nPGSSLMODE=disable\nUPLOAD_DIR=uploads\nFILE_BASE_URL=http://localhost:5000/uploads\n
 # JWT
 JWT_SECRET=your_jwt_secret_key
 JWT_EXPIRES_IN=7d
@@ -339,7 +334,7 @@ sipelan/
 │   └── schema.sql           # PostgreSQL schema
 ├── lib/                     # Utility libraries
 │   ├── email.ts             # Email utilities
-│   └── supabase.ts          # Supabase client
+│   └── db.ts                # PostgreSQL client
 ├── public/                  # Static assets
 ├── .env.local              # Environment variables
 ├── next.config.js          # Next.js configuration
@@ -422,7 +417,7 @@ sipelan/
 
 **Error: "relation does not exist"**
 ```bash
-# Jalankan ulang database/schema.sql di Supabase SQL Editor
+# Jalankan ulang database/schema.sql di psql atau DB client
 # Pastikan semua tables ter-create dengan verification queries
 ```
 
@@ -532,14 +527,7 @@ UPDATE users SET is_active = true WHERE is_active IS NULL;
 
 #### 2. Environment Variables
 ```env
-# Old
-DATABASE_URL=...
-
-# New (Supabase)
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-SUPABASE_SERVICE_KEY=...
-```
+# Old (Supabase)\nNEXT_PUBLIC_SUPABASE_URL=...\nNEXT_PUBLIC_SUPABASE_ANON_KEY=...\nSUPABASE_SERVICE_KEY=...\n\n# New (PostgreSQL)\nDATABASE_URL=postgresql://user:password@localhost:5432/sipelan\nPGSSLMODE=disable\n```
 
 #### 3. API Changes
 ```typescript
@@ -563,7 +551,7 @@ import { Line } from 'react-chartjs-2'
 
 ### Breaking Changes
 - ❌ Recharts removed → Use Chart.js
-- ❌ Direct database access → Use Supabase client
+- ❌ Direct database access → Use PostgreSQL client
 - ❌ Old email system → Use lib/email.ts
 - ✅ New responsive sidebar
 - ✅ Email notifications
@@ -770,9 +758,10 @@ vercel login
 Di Vercel Dashboard → Settings → Environment Variables, tambahkan:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_KEY=your_service_key
+DATABASE_URL=postgresql://user:password@host:5432/sipelan
+PGSSLMODE=require
+UPLOAD_DIR=uploads
+FILE_BASE_URL=https://your-domain.vercel.app/uploads
 JWT_SECRET=your_jwt_secret
 JWT_EXPIRES_IN=7d
 SMTP_HOST=smtp.gmail.com
@@ -819,7 +808,7 @@ netlify deploy --prod
 
 - ✅ Environment variables configured
 - ✅ Database schema deployed
-- ✅ Storage bucket created
+- ✅ Uploads directory available
 - ✅ SMTP credentials working
 - ✅ Custom domain configured (if any)
 - ✅ SSL certificate active
@@ -894,7 +883,7 @@ Body: { status: 'selesai' }
 4. **Email Notifications** - Automated dengan Nodemailer
 5. **Admin Dashboard** - Statistics & charts
 6. **Responsive Design** - Mobile, tablet, desktop
-7. **File Upload** - Supabase Storage integration
+7. **File Upload** - Local filesystem uploads
 8. **User Management** - Admin panel untuk users
 9. **Reports & Analytics** - Chart.js visualization
 10. **FAQ System** - Accordion UI
@@ -911,7 +900,7 @@ Masuk → Terverifikasi → Terdisposisi → Tindak Lanjut → Selesai
 
 - **Next.js Team** - Amazing React framework
 - **Vercel** - Easy deployment platform
-- **Supabase** - Backend as a Service
+- **PostgreSQL** - Database
 - **Tailwind CSS** - Utility-first CSS
 - **Framer Motion** - Smooth animations
 - **Chart.js** - Beautiful charts

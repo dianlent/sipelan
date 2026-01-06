@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 import bcrypt from 'bcryptjs'
 import { createSession, setSessionCookie } from '@/lib/session'
+import { query } from '@/lib/db'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,25 +19,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by email
-    const { data: user, error } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single()
+    const { rows } = await query('SELECT * FROM users WHERE email = $1 LIMIT 1', [email])
+    const user = rows[0]
 
     // Debug logging
-    console.log('🔍 Login attempt:', { email })
-    console.log('📊 Query result:', { 
+    console.log('dY"? Login attempt:', { email })
+    console.log('dY"S Query result:', { 
       found: !!user, 
-      error: error?.message,
+      error: user ? null : 'not_found',
       userId: user?.id,
       userEmail: user?.email,
       userRole: user?.role,
       isActive: user?.is_active
     })
 
-    if (error || !user) {
-      console.log('❌ User not found:', error?.message)
+    if (!user) {
+      console.log('ƒ?O User not found')
       return NextResponse.json(
         { success: false, message: 'Email atau password salah' },
         { status: 401 }
@@ -53,15 +50,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify password
-    console.log('🔐 Verifying password...')
+    console.log('dY"? Verifying password...')
     console.log('Password hash length:', user.password_hash?.length)
     console.log('Password hash prefix:', user.password_hash?.substring(0, 7))
     
     const isValidPassword = await bcrypt.compare(password, user.password_hash)
-    console.log('✅ Password valid:', isValidPassword)
+    console.log('ƒo. Password valid:', isValidPassword)
     
     if (!isValidPassword) {
-      console.log('❌ Invalid password for user:', email)
+      console.log('ƒ?O Invalid password for user:', email)
       return NextResponse.json(
         { success: false, message: 'Email atau password salah' },
         { status: 401 }

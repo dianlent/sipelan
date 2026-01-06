@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 import { getCurrentUser } from '@/lib/session'
+import { query } from '@/lib/db'
 
 // GET - Get all settings (admin only)
 export async function GET(request: NextRequest) {
@@ -14,22 +14,11 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { data: settings, error } = await supabaseAdmin
-      .from('app_settings')
-      .select('*')
-      .order('setting_key')
-
-    if (error) {
-      console.error('Error fetching settings:', error)
-      return NextResponse.json(
-        { success: false, message: 'Failed to fetch settings' },
-        { status: 500 }
-      )
-    }
+    const { rows } = await query('SELECT * FROM app_settings ORDER BY setting_key ASC')
 
     // Convert to object format
     const settingsObject: Record<string, any> = {}
-    settings.forEach(setting => {
+    rows.forEach(setting => {
       let value = setting.setting_value
       
       // Parse based on type
@@ -77,37 +66,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update or insert each setting (upsert)
     const updates = []
     for (const [key, value] of Object.entries(settings)) {
       const stringValue = String(value)
       
-      // Determine setting type
       let settingType = 'string'
       if (typeof value === 'boolean') {
         settingType = 'boolean'
       } else if (typeof value === 'number') {
         settingType = 'number'
       }
-      
-      // Use upsert to insert if not exists, update if exists
-      const { error } = await supabaseAdmin
-        .from('app_settings')
-        .upsert({
-          setting_key: key,
-          setting_value: stringValue,
-          setting_type: settingType,
-          updated_by: user.id,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'setting_key'
-        })
 
-      if (error) {
+      try {
+        await query(
+          `
+            INSERT INTO app_settings (setting_key, setting_value, setting_type, updated_by, updated_at)
+            VALUES ($1, $2, $3, $4, NOW())
+            ON CONFLICT (setting_key)
+            DO UPDATE SET
+              setting_value = EXCLUDED.setting_value,
+              setting_type = EXCLUDED.setting_type,
+              updated_by = EXCLUDED.updated_by,
+              updated_at = EXCLUDED.updated_at
+          `,
+          [key, stringValue, settingType, user.id]
+        )
+        updates.push({ key, success: true })
+      } catch (error: any) {
         console.error(`Error upserting ${key}:`, error)
         updates.push({ key, success: false, error: error.message })
-      } else {
-        updates.push({ key, success: true })
       }
     }
 

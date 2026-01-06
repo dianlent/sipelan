@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+import { query } from '@/lib/db'
 
 // Helper functions
-function processMonthlyData(data: any[]) {
+function processMonthlyData(data: Array<{ created_at: string }>) {
   const monthCounts: { [key: string]: number } = {}
   
   data.forEach(item => {
@@ -18,7 +14,7 @@ function processMonthlyData(data: any[]) {
   return Object.entries(monthCounts).map(([month, count]) => ({ month, count }))
 }
 
-function processStatusData(data: any[]) {
+function processStatusData(data: Array<{ status: string }>) {
   const statusCounts: { [key: string]: number } = {}
   const statusColors: { [key: string]: string } = {
     'masuk': '#3B82F6',
@@ -39,11 +35,11 @@ function processStatusData(data: any[]) {
   }))
 }
 
-function processKategoriData(data: any[]) {
+function processKategoriData(data: Array<{ nama_kategori: string | null }>) {
   const kategoriCounts: { [key: string]: number } = {}
 
   data.forEach(item => {
-    const kategori = item.kategori_pengaduan?.nama_kategori || 'Lainnya'
+    const kategori = item.nama_kategori || 'Lainnya'
     kategoriCounts[kategori] = (kategoriCounts[kategori] || 0) + 1
   })
 
@@ -53,11 +49,11 @@ function processKategoriData(data: any[]) {
     .slice(0, 5) // Top 5 kategori
 }
 
-function processBidangData(data: any[]) {
+function processBidangData(data: Array<{ nama_bidang: string | null }>) {
   const bidangCounts: { [key: string]: number } = {}
 
   data.forEach(item => {
-    const bidang = item.bidang?.nama_bidang || 'Belum Didisposisi'
+    const bidang = item.nama_bidang || 'Belum Didisposisi'
     bidangCounts[bidang] = (bidangCounts[bidang] || 0) + 1
   })
 
@@ -89,96 +85,113 @@ export async function GET(request: NextRequest) {
         break
     }
 
+    const startDateIso = startDate.toISOString()
+
     // Get total users
-    const { count: totalUsers } = await supabase
-      .from('users')
-      .select('*', { count: 'exact', head: true })
+    const totalUsersResult = await query<{ count: string }>('SELECT COUNT(*)::text AS count FROM users')
+    const totalUsers = parseInt(totalUsersResult.rows[0]?.count || '0', 10)
 
     // Get total pengaduan
-    const { count: totalPengaduan } = await supabase
-      .from('pengaduan')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', startDate.toISOString())
+    const totalPengaduanResult = await query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM pengaduan WHERE created_at >= $1',
+      [startDateIso]
+    )
+    const totalPengaduan = parseInt(totalPengaduanResult.rows[0]?.count || '0', 10)
 
     // Get pengaduan selesai
-    const { count: pengaduanSelesai } = await supabase
-      .from('pengaduan')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'selesai')
-      .gte('created_at', startDate.toISOString())
+    const pengaduanSelesaiResult = await query<{ count: string }>(
+      'SELECT COUNT(*)::text AS count FROM pengaduan WHERE status = $1 AND created_at >= $2',
+      ['selesai', startDateIso]
+    )
+    const pengaduanSelesai = parseInt(pengaduanSelesaiResult.rows[0]?.count || '0', 10)
 
     // Get pengaduan dalam proses
-    const { count: pengaduanProses } = await supabase
-      .from('pengaduan')
-      .select('*', { count: 'exact', head: true })
-      .in('status', ['masuk', 'terverifikasi', 'terdisposisi', 'tindak_lanjut'])
-      .gte('created_at', startDate.toISOString())
+    const pengaduanProsesResult = await query<{ count: string }>(
+      `
+        SELECT COUNT(*)::text AS count
+        FROM pengaduan
+        WHERE status = ANY($1::text[])
+          AND created_at >= $2
+      `,
+      [['masuk', 'terverifikasi', 'terdisposisi', 'tindak_lanjut'], startDateIso]
+    )
+    const pengaduanProses = parseInt(pengaduanProsesResult.rows[0]?.count || '0', 10)
 
     // Get pengaduan by month
-    const { data: monthlyData } = await supabase
-      .from('pengaduan')
-      .select('created_at')
-      .gte('created_at', startDate.toISOString())
-      .order('created_at', { ascending: true })
-
-    const pengaduanByMonth = processMonthlyData(monthlyData || [])
+    const monthlyResult = await query<{ created_at: string }>(
+      'SELECT created_at FROM pengaduan WHERE created_at >= $1 ORDER BY created_at ASC',
+      [startDateIso]
+    )
+    const pengaduanByMonth = processMonthlyData(monthlyResult.rows || [])
 
     // Get pengaduan by status
-    const { data: statusData } = await supabase
-      .from('pengaduan')
-      .select('status')
-      .gte('created_at', startDate.toISOString())
-
-    const pengaduanByStatus = processStatusData(statusData || [])
+    const statusResult = await query<{ status: string }>(
+      'SELECT status FROM pengaduan WHERE created_at >= $1',
+      [startDateIso]
+    )
+    const pengaduanByStatus = processStatusData(statusResult.rows || [])
 
     // Get pengaduan by kategori
-    const { data: kategoriData } = await supabase
-      .from('pengaduan')
-      .select('kategori_id, kategori_pengaduan(nama_kategori)')
-      .gte('created_at', startDate.toISOString())
-
-    const pengaduanByKategori = processKategoriData(kategoriData || [])
+    const kategoriResult = await query<{ nama_kategori: string | null }>(
+      `
+        SELECT k.nama_kategori
+        FROM pengaduan p
+        LEFT JOIN kategori_pengaduan k ON p.kategori_id = k.id
+        WHERE p.created_at >= $1
+      `,
+      [startDateIso]
+    )
+    const pengaduanByKategori = processKategoriData(kategoriResult.rows || [])
 
     // Get pengaduan by bidang
-    const { data: bidangData } = await supabase
-      .from('pengaduan')
-      .select('bidang_id, bidang(nama_bidang)')
-      .gte('created_at', startDate.toISOString())
-      .not('bidang_id', 'is', null)
-
-    const pengaduanByBidang = processBidangData(bidangData || [])
+    const bidangResult = await query<{ nama_bidang: string | null }>(
+      `
+        SELECT b.nama_bidang
+        FROM pengaduan p
+        LEFT JOIN bidang b ON p.bidang_id = b.id
+        WHERE p.created_at >= $1
+          AND p.bidang_id IS NOT NULL
+      `,
+      [startDateIso]
+    )
+    const pengaduanByBidang = processBidangData(bidangResult.rows || [])
 
     // Calculate average response time (in hours)
-    const { data: completedPengaduan } = await supabase
-      .from('pengaduan')
-      .select('created_at, updated_at')
-      .eq('status', 'selesai')
-      .gte('created_at', startDate.toISOString())
-      .limit(50)
+    const completedResult = await query<{ created_at: string; updated_at: string }>(
+      `
+        SELECT created_at, updated_at
+        FROM pengaduan
+        WHERE status = $1
+          AND created_at >= $2
+        ORDER BY created_at DESC
+        LIMIT 50
+      `,
+      ['selesai', startDateIso]
+    )
 
     let avgResponseTime = 24 // Default 24 hours
-    if (completedPengaduan && completedPengaduan.length > 0) {
-      const totalHours = completedPengaduan.reduce((sum, p) => {
+    if (completedResult.rows.length > 0) {
+      const totalHours = completedResult.rows.reduce((sum, p) => {
         const created = new Date(p.created_at)
         const updated = new Date(p.updated_at)
         const hours = Math.abs(updated.getTime() - created.getTime()) / 36e5
         return sum + hours
       }, 0)
-      avgResponseTime = Math.round(totalHours / completedPengaduan.length)
+      avgResponseTime = Math.round(totalHours / completedResult.rows.length)
     }
 
     // Calculate satisfaction rate
     let satisfaction = 95
-    if (totalPengaduan && totalPengaduan > 0 && pengaduanSelesai) {
+    if (totalPengaduan > 0 && pengaduanSelesai) {
       satisfaction = Math.round((pengaduanSelesai / totalPengaduan) * 100)
     }
 
     const stats = {
-      totalUsers: totalUsers || 0,
-      totalPengaduan: totalPengaduan || 0,
-      selesai: pengaduanSelesai || 0,
-      pengaduanSelesai: pengaduanSelesai || 0,
-      pengaduanProses: pengaduanProses || 0,
+      totalUsers,
+      totalPengaduan,
+      selesai: pengaduanSelesai,
+      pengaduanSelesai,
+      pengaduanProses,
       avgResponseTime,
       satisfaction,
       pengaduanByMonth,

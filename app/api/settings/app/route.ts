@@ -1,38 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 import { getCurrentUser } from '@/lib/session'
+import { query } from '@/lib/db'
+import { saveUploadedFile } from '@/lib/storage'
+
+export const runtime = 'nodejs'
 
 // Helper function to upsert setting
 async function upsertSetting(key: string, value: string) {
-  const { data: existing } = await supabaseAdmin
-    .from('app_settings')
-    .select('id')
-    .eq('setting_key', key)
-    .single()
-
-  if (existing) {
-    return supabaseAdmin
-      .from('app_settings')
-      .update({ 
-        setting_value: value, 
-        updated_at: new Date().toISOString() 
-      })
-      .eq('setting_key', key)
-  } else {
-    return supabaseAdmin
-      .from('app_settings')
-      .insert({ 
-        setting_key: key, 
-        setting_value: value,
-        setting_type: 'string',
-        is_public: true
-      })
-  }
+  return query(
+    `
+      INSERT INTO app_settings (setting_key, setting_value, setting_type, is_public, updated_at)
+      VALUES ($1, $2, 'string', true, NOW())
+      ON CONFLICT (setting_key)
+      DO UPDATE SET
+        setting_value = EXCLUDED.setting_value,
+        updated_at = EXCLUDED.updated_at
+    `,
+    [key, value]
+  )
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication using getCurrentUser
     const user = await getCurrentUser()
 
     if (!user || user.role !== 'admin') {
@@ -42,70 +31,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Parse form data
     const formData = await request.formData()
     const appName = formData.get('app_name') as string
     const logoFile = formData.get('logo') as File | null
-    const facebookUrl = formData.get('facebook_url') as string || ''
-    const twitterUrl = formData.get('twitter_url') as string || ''
-    const instagramUrl = formData.get('instagram_url') as string || ''
-    const youtubeUrl = formData.get('youtube_url') as string || ''
+    const facebookUrl = (formData.get('facebook_url') as string) || ''
+    const twitterUrl = (formData.get('twitter_url') as string) || ''
+    const instagramUrl = (formData.get('instagram_url') as string) || ''
+    const youtubeUrl = (formData.get('youtube_url') as string) || ''
 
     let logoUrl = ''
 
-    // Upload logo if provided
     if (logoFile) {
-      const fileExt = logoFile.name.split('.').pop()
-      const fileName = `logo-${Date.now()}.${fileExt}`
-      const filePath = `app/${fileName}`
-
-      // Convert File to ArrayBuffer then to Buffer
-      const arrayBuffer = await logoFile.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
-
-      // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabaseAdmin
-        .storage
-        .from('pengaduan-files')
-        .upload(filePath, buffer, {
-          contentType: logoFile.type,
-          upsert: false
-        })
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError)
-        return NextResponse.json(
-          { success: false, message: 'Gagal upload logo: ' + uploadError.message },
-          { status: 500 }
-        )
-      }
-
-      // Get public URL
-      const { data: urlData } = supabaseAdmin
-        .storage
-        .from('pengaduan-files')
-        .getPublicUrl(filePath)
-
-      logoUrl = urlData.publicUrl
+      const uploaded = await saveUploadedFile(logoFile, 'app', 'logo')
+      logoUrl = uploaded.publicUrl
     }
 
-    // Save app_name to database using key-value structure
     if (appName) {
-      const { error: nameError } = await upsertSetting('app_name', appName)
-      if (nameError) {
-        console.error('Error saving app_name:', nameError)
-      }
+      await upsertSetting('app_name', appName)
     }
 
-    // Save logo_url if uploaded
     if (logoUrl) {
-      const { error: logoError } = await upsertSetting('app_logo_url', logoUrl)
-      if (logoError) {
-        console.error('Error saving app_logo_url:', logoError)
-      }
+      await upsertSetting('app_logo_url', logoUrl)
     }
 
-    // Save social media URLs
     await upsertSetting('facebook_url', facebookUrl)
     await upsertSetting('twitter_url', twitterUrl)
     await upsertSetting('instagram_url', instagramUrl)

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
 import { maskName, maskEmail } from '@/lib/utils'
+import { query } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
@@ -16,48 +16,42 @@ export async function GET(
       )
     }
 
-    // Fetch pengaduan with related data
-    const { data: pengaduan, error: pengaduanError } = await supabaseAdmin
-      .from('pengaduan')
-      .select(`
-        *,
-        kategori_pengaduan (
-          id,
-          nama_kategori,
-          deskripsi
-        ),
-        bidang (
-          bidang_id,
-          nama_bidang,
-          kode_bidang
-        ),
-        users (
-          nama_lengkap,
-          email
-        )
-      `)
-      .eq('kode_pengaduan', kode.toUpperCase())
-      .single()
+    const pengaduanResult = await query(
+      `
+        SELECT
+          p.*,
+          json_build_object('id', k.id, 'nama_kategori', k.nama_kategori, 'deskripsi', k.deskripsi) AS kategori_pengaduan,
+          json_build_object('bidang_id', b.id, 'nama_bidang', b.nama_bidang, 'kode_bidang', b.kode_bidang) AS bidang,
+          json_build_object('nama_lengkap', u.nama_lengkap, 'email', u.email) AS users
+        FROM pengaduan p
+        LEFT JOIN kategori_pengaduan k ON k.id = p.kategori_id
+        LEFT JOIN bidang b ON b.id = p.bidang_id
+        LEFT JOIN users u ON u.id = p.user_id
+        WHERE p.kode_pengaduan = $1
+        LIMIT 1
+      `,
+      [kode.toUpperCase()]
+    )
 
-    if (pengaduanError || !pengaduan) {
+    const pengaduan = pengaduanResult.rows[0]
+
+    if (!pengaduan) {
       return NextResponse.json(
         { success: false, message: 'Pengaduan tidak ditemukan' },
         { status: 404 }
       )
     }
 
-    // Fetch timeline with tanggapan and petugas
-    const { data: timeline, error: timelineError } = await supabaseAdmin
-      .from('pengaduan_status')
-      .select('*, tanggapan, petugas')
-      .eq('pengaduan_id', pengaduan.id)
-      .order('created_at', { ascending: true })
+    const timelineResult = await query(
+      `
+        SELECT *
+        FROM pengaduan_status
+        WHERE pengaduan_id = $1
+        ORDER BY created_at ASC
+      `,
+      [pengaduan.id]
+    )
 
-    if (timelineError) {
-      console.error('Timeline error:', timelineError)
-    }
-
-    // Prepare response data with masking for anonymous submissions
     const responseData = {
       id: pengaduan.id,
       kode_pengaduan: pengaduan.kode_pengaduan,
@@ -77,7 +71,7 @@ export async function GET(
         email: pengaduan.email_pelapor
       }),
       bidang: pengaduan.bidang,
-      timeline: timeline || [],
+      timeline: timelineResult.rows || [],
       anonim: pengaduan.anonim
     }
 

@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { query } from '@/lib/db'
+import { saveUploadedFile } from '@/lib/storage'
+
+export const runtime = 'nodejs'
 
 export async function POST(
   request: NextRequest,
@@ -22,70 +25,54 @@ export async function POST(
 
     let fileUrl = null
 
-    // Upload file if provided
     if (fileLampiran) {
-      const fileExt = fileLampiran.name.split('.').pop()
-      const fileName = `${pengaduanId}-${Date.now()}.${fileExt}`
-      const filePath = `tanggapan/${fileName}`
-
-      console.log('📤 Uploading file:', fileName)
-
-      const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-        .from('pengaduan-files')
-        .upload(filePath, fileLampiran, {
-          contentType: fileLampiran.type,
-          upsert: false
-        })
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError)
-        return NextResponse.json(
-          { success: false, message: 'Gagal upload file: ' + uploadError.message },
-          { status: 500 }
-        )
-      }
-
-      // Get public URL
-      const { data: urlData } = supabaseAdmin.storage
-        .from('pengaduan-files')
-        .getPublicUrl(filePath)
-
-      fileUrl = urlData.publicUrl
-      console.log('✅ File uploaded:', fileUrl)
+      const uploaded = await saveUploadedFile(fileLampiran, 'tanggapan', `tanggapan-${pengaduanId}`)
+      fileUrl = uploaded.publicUrl
+      console.log('バ. File uploaded:', fileUrl)
     }
 
-    // Insert new status with tanggapan and file
-    const { data: newStatus, error: statusError } = await supabaseAdmin
-      .from('pengaduan_status')
-      .insert({
-        pengaduan_id: pengaduanId,
-        status: status,
-        keterangan: `Tanggapan dari ${petugas}`,
-        tanggapan: tanggapan,
-        petugas: petugas,
-        file_url: fileUrl
-      })
-      .select()
-      .single()
+    const { rows } = await query(
+      `
+        INSERT INTO pengaduan_status (
+          pengaduan_id,
+          status,
+          keterangan,
+          tanggapan,
+          petugas,
+          file_url
+        )
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `,
+      [
+        pengaduanId,
+        status,
+        `Tanggapan dari ${petugas}`,
+        tanggapan,
+        petugas,
+        fileUrl
+      ]
+    )
 
-    if (statusError) {
-      console.error('Error inserting status:', statusError)
+    const newStatus = rows[0]
+
+    if (!newStatus) {
       return NextResponse.json(
         { success: false, message: 'Gagal menambahkan tanggapan' },
         { status: 500 }
       )
     }
 
-    // Update pengaduan status if provided
     if (status) {
-      const { error: updateError } = await supabaseAdmin
-        .from('pengaduan')
-        .update({ status: status })
-        .eq('id', pengaduanId)
-
-      if (updateError) {
-        console.error('Error updating pengaduan status:', updateError)
-      }
+      await query(
+        `
+          UPDATE pengaduan
+          SET status = $1,
+              updated_at = NOW()
+          WHERE id = $2
+        `,
+        [status, pengaduanId]
+      )
     }
 
     return NextResponse.json({

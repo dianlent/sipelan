@@ -1,25 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { query } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   try {
-    // Fetch all categories
-    const { data, error } = await supabaseAdmin
-      .from('kategori_pengaduan')
-      .select('*')
-      .order('nama_kategori', { ascending: true })
-
-    if (error) {
-      console.error('Error fetching categories:', error)
-      return NextResponse.json(
-        { success: false, message: 'Gagal mengambil data kategori: ' + error.message },
-        { status: 500 }
-      )
-    }
+    const { rows } = await query('SELECT * FROM kategori_pengaduan ORDER BY nama_kategori ASC')
 
     return NextResponse.json({
       success: true,
-      data: data || []
+      data: rows || []
     })
 
   } catch (error: any) {
